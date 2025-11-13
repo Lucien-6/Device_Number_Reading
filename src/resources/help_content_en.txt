@@ -1,0 +1,491 @@
+═══════════════════════════════════════════════════════════════
+          Device Readings Analyzer User Guide
+═══════════════════════════════════════════════════════════════
+
+【Introduction】
+
+This is a professional tool for recognizing digital readings from 
+device displays. Using computer vision and PaddleOCR SVTR_Tiny custom 
+model technology, it can automatically recognize numeric readings from 
+7-segment displays and export results to Excel spreadsheets. Suitable for 
+laboratory data collection, industrial equipment monitoring, historical 
+data recovery, and more.
+
+Key Features:
+• Batch image processing support
+• Intelligent recognition based on SVTR_Tiny digital-specific model (24MB, inference model preferred)
+• No external installation, model included in project, ready to use
+• Support for negative numbers and decimal points
+• Support for decimal position adjustment (Keep/None/0.1/0.01/0.001/0.0001)
+• Real-time data curve display
+• One-click export to Excel format
+
+═══════════════════════════════════════════════════════════════
+【Usage Workflow】
+═══════════════════════════════════════════════════════════════
+
+Step 1: Load Image Sequence
+─────────────────────────────────────────────────────────────
+
+1. Click File → Load Image Sequence from menu bar
+2. Select folder containing device reading images
+3. Supported image formats: JPG, PNG, BMP, TIFF
+4. Image requirements:
+   • Digital display position must be consistent across images
+   • Images should be clear with legible digits
+   • Recommended to name files in chronological order
+
+Tip: Program automatically loads images sorted by filename.
+
+
+Step 2: Select Reading Region (ROI)
+─────────────────────────────────────────────────────────────
+
+1. Click "Select ROI" button in control panel
+2. Program automatically displays the first image
+3. Hold left mouse button and drag to frame the display area
+4. Ensure all digits are completely included (including decimal 
+   point and minus sign)
+5. Green border appears when selection is complete
+6. Click "Clear ROI" to clear current selection if reselection needed
+
+Notes:
+• ROI area should be compact, containing only the digit display
+• Avoid including excessive background or irrelevant elements
+• Ensure display is within this area in all images
+
+
+Step 3: Configure Parameters
+─────────────────────────────────────────────────────────────
+
+【Time Parameters】
+
+• Time Interval
+  - Time gap between adjacent images
+  - Enter numeric value, e.g., 1.0, 0.5, 10
+  
+• Time Unit
+  - Select time unit: milliseconds, seconds, minutes, hours
+  - milliseconds: for high-speed acquisition
+  - seconds: most commonly used
+  - minutes/hours: for long-term monitoring
+  
+• Start Time
+  - Time point corresponding to first image
+  - Default is 0, can be set as needed
+  
+• Reading Unit
+  - Enter physical unit of reading
+  - e.g., °C, MPa, V, A, rpm, etc.
+  - This unit appears in chart and exported Excel file
+
+• Decimal Position
+  - Adjust decimal position and precision of recognition results
+  - Keep: Preserve original recognition result (default)
+  - None: Remove decimal point, get integer
+  - 0.1: Adjust to 1 decimal place
+  - 0.01: Adjust to 2 decimal places
+  - 0.001: Adjust to 3 decimal places
+  - 0.0001: Adjust to 4 decimal places
+  - Use case: Display shows no decimal point, but actual reading needs decimals
+
+【Preprocessing Options】
+
+• Erosion Size
+  - 0 = disabled, >0 = enabled
+  - Used to remove noise and small objects
+  - Uses rectangular kernel
+  - Recommended values:
+    * Slight noise: 2
+    * Moderate noise: 3
+    * Severe noise: 4
+  - When enabled, automatically processes decimal point:
+    * Auto-detect decimal point (minimum area < 1/4 of second minimum)
+    * Expand horizontal spacing between other objects and decimal (4× kernel size)
+    * Dilate other objects to restore original state
+    * Replace decimal point with solid circle (diameter = max(4×kernel, ROI_height/15))
+  
+• Closing Size
+  - 0 = disabled, >0 = enabled
+  - Repair broken or incomplete strokes
+  - Connect separated digit parts
+  - Uses rectangular kernel, automatically protects decimal point
+  - Recommended values:
+    * Slight breaks: 3
+    * Moderate breaks: 5
+    * Severe breaks: 7
+  - Larger values = stronger connection, but may over-connect
+  
+• Preview Preprocessing
+  - Click this button to view preprocessing effect with current settings
+  - Displays processed binary image in new window
+  - Useful for debugging and optimizing parameters
+  - Press any key to close preview window
+
+
+Step 4: Process Images
+─────────────────────────────────────────────────────────────
+
+1. Confirm all parameters are correctly set
+2. Click "Process Images" button to start batch processing
+3. During processing:
+   • Image preview area shows currently processing image
+   • Log window displays real-time recognition results
+   • Chart area dynamically updates data curve
+   • Image slider automatically moves to current position
+   • Click "Stop Processing" button to abort at any time
+
+4. Log message descriptions:
+   • Green [INFO]: Successfully recognized
+     Example: Image 1: 0.00 seconds → 25.3 °C
+   • Orange [WARNING]: Recognition failed or invalid reading
+     Example: Image 5: No valid reading
+   • Red [ERROR]: Processing error
+     Example: Recognition error on image 10: ...
+
+5. Statistics displayed upon completion
+
+
+Step 5: Export Data
+─────────────────────────────────────────────────────────────
+
+1. After processing, File → Export to Excel in menu bar becomes enabled
+2. Click File → Export to Excel
+3. Choose save location and filename in dialog
+4. Data exports in Excel format (.xlsx)
+
+Exported file contains:
+• First column: Time (with unit)
+• Second column: Reading (with unit)
+• Sheet name: Device Readings
+• Can be opened directly in Excel, Origin, etc. for analysis
+
+═══════════════════════════════════════════════════════════════
+【Frequently Asked Questions】
+═══════════════════════════════════════════════════════════════
+
+Q1: Low recognition accuracy, many images cannot be recognized?
+
+A1: Please try the following solutions:
+   1. Optimize preprocessing parameters
+      • Click "Preview Preprocessing" to view effect
+      • If digit strokes broken, set Closing Size > 0 (e.g., 3, 5, 7)
+      • If noise is high, set Erosion Size > 0 (e.g., 2, 3)
+        - When enabled, automatically processes decimal point, replacing it with circle for better recognition
+      • Both can be used in combination
+   
+   2. Improve image quality
+      • Ensure images clear, digits legible
+      • Avoid blur, overexposure, underexposure
+      • Use higher resolution images
+   
+   3. Optimize ROI selection
+      • Ensure ROI area is compact, containing only digits
+      • Leave appropriate margins
+      • Avoid including excessive background
+   
+   4. Improve shooting conditions
+      • Use even lighting
+      • Avoid reflections and shadows
+      • Keep camera stable
+
+
+Q2: Some images show "No valid reading" warning?
+
+A2: Possible causes and solutions:
+   1. ROI area issues
+      • Check if ROI completely contains all digits
+      • Ensure decimal point and minus sign also within ROI
+      • Reselect more appropriate ROI area
+   
+   2. Image quality issues
+      • Individual images may have reflections, shadows or obstructions
+      • Check actual quality of these images
+      • If image itself unclear, failure to recognize is normal
+   
+   3. Display position shift
+      • Confirm display position consistent in all images
+      • If position shifts, need to retake or crop images
+   
+   4. View detailed log information
+      • Log shows specific error reasons
+      • Make targeted adjustments based on error messages
+
+
+Q3: Decimal point or minus sign always fails recognition?
+
+A3: Decimal points and minus signs relatively difficult to recognize:
+   1. ROI selection
+      • Ensure ROI completely includes decimal point and minus sign positions
+      • Leave sufficient margins
+   
+   2. Image resolution
+      • Decimal point may be too small, consider using higher resolution images
+      • Or shoot closer to display during capture
+   
+   3. Image quality
+      • Ensure decimal point and minus sign are clearly visible
+      • Avoid excessive blur or out of focus
+   
+   4. Preprocessing adjustment
+      • Minus sign may stick to digits
+      • Try adjusting preprocessing parameters
+      • When Erosion Size is enabled, decimal point is automatically replaced with circle for better recognition
+
+
+Q4: Decimal position is incorrect, what to do?
+
+A4: Use Decimal Position feature to adjust:
+   1. Problem scenario
+      • Display shows "12345", but actual reading should be "123.45"
+      • Display shows "1000", but actual reading should be "1.000"
+   
+   2. Solution
+      • Select target precision in Decimal Position dropdown
+      • For example: choose "0.01" for 2 decimal places
+      • Program automatically adjusts recognition result to correct precision
+   
+   3. Usage example
+      • Original recognition result: "12345"
+      • Selected precision: "0.01" (2 decimal places)
+      • Output result: "123.45"
+   
+   4. Other uses
+      • Unify decimal places format across different images
+      • Remove decimal point (select "None")
+      • Convert integer to decimal (select target precision)
+
+
+Q5: SVTR_Tiny recognition failed, what to do?
+
+A5: When SVTR_Tiny recognition fails:
+   1. Check image quality
+      • Ensure digits are clear and complete
+      • Resolution high enough (recommend ROI height >32 pixels)
+      • Avoid excessive blur or out of focus
+   
+   2. Adjust preprocessing parameters
+      • Use "Preview Preprocessing" to view effect
+      • Adjust parameters based on display characteristics
+   
+   3. Optimize ROI region
+      • ROI should tightly surround digit area
+      • Leave 10-20 pixels margin
+   
+   4. Improve shooting conditions
+      • Use frontal shooting, avoid tilting
+      • Keep stable, avoid motion blur
+   
+   5. Check model files
+      • Ensure ./svtr_tiny_digital/ directory exists
+      • Check for inference.pdmodel and inference.pdiparams files
+      • Or best_accuracy.pdparams file
+      • Program automatically prefers inference model (faster)
+
+
+Q6: How to improve processing speed?
+
+A6: Processing speed optimization suggestions:
+   1. Reduce image resolution
+      • Use lower resolution while ensuring digits remain clear
+      • Can scale images before shooting or importing
+   
+   2. Select smaller ROI area
+      • Only include digit display part, no excess background
+   
+   3. Disable unnecessary preprocessing
+      • If image quality good, set Erosion Size: 0 and Closing Size: 0
+   
+   4. Reduce image count
+      • If allowed, can reduce sampling frequency
+
+
+Q7: Where is exported Excel file? How to use it?
+
+A7: 
+   1. File location
+      • At save location you selected
+      • Filename as specified by you
+   
+   2. File contents
+      • First column: Time values (with unit)
+      • Second column: Reading values (with unit)
+      • Each row corresponds to one image's recognition result
+   
+   3. Usage methods
+      • Can open directly in Excel for viewing and editing
+      • Can import into Origin, MATLAB, etc. for data analysis
+      • Can be used to plot curves, calculate statistics, etc.
+
+
+Q8: Program suddenly freezes or unresponsive?
+
+A8: 
+   1. Wait for processing to complete
+      • Large volume image processing takes time, please be patient
+      • Can check progress through log window
+   
+   2. Use stop function
+      • Click "Stop Processing" button to abort processing
+      • Already processed data will be retained
+   
+   3. Check image count and size
+      • If very many images (>1000) or very high resolution
+      • Consider batch processing or reduce resolution
+   
+   4. Restart program
+      • If truly unresponsive, can close and reopen program
+
+
+═══════════════════════════════════════════════════════════════
+【Parameter Quick Reference】
+═══════════════════════════════════════════════════════════════
+
+┌─────────────────────┬────────────────────────────────┐
+│ Scenario            │ Recommended Settings            │
+├─────────────────────┼────────────────────────────────┤
+│ Standard            │ • Erosion Size: 0               │
+│ Recognition         │ • Closing Size: 0               │
+│ (Good quality)      │ • Decimal Position: Keep        │
+│                     │ • Compact ROI, SVTR_Tiny model  │
+├─────────────────────┼────────────────────────────────┤
+│ Low Quality         │ • Erosion Size: 2               │
+│ Images              │ • Closing Size: 5               │
+│ (Blurry, noisy)     │ • Decimal Position: Keep        │
+│                     │ • Increase image resolution     │
+├─────────────────────┼────────────────────────────────┤
+│ High Noise          │ • Erosion Size: 2-3             │
+│ (Large background)  │ • Closing Size: 0               │
+│                     │ • Decimal Position: Keep        │
+├─────────────────────┼────────────────────────────────┤
+│ Uneven              │ • Erosion Size: 2               │
+│ Lighting            │ • Closing Size: 3               │
+│ (Over/under exposed)│ • Decimal Position: Keep        │
+│                     │ • Optimize lighting conditions  │
+├─────────────────────┼────────────────────────────────┤
+│ Broken              │ • Erosion Size: 0               │
+│ Strokes             │ • Closing Size: 3-7             │
+│ (Incomplete display)│ • Decimal Position: Keep        │
+│                     │ • Preview to debug              │
+├─────────────────────┼────────────────────────────────┤
+│ Very High           │ • Use high quality images       │
+│ Accuracy Required   │ • ROI height >50 pixels         │
+│ (Low tolerance)     │ • Decimal Position: Keep        │
+│                     │ • Optimize lighting and angle   │
+├─────────────────────┼────────────────────────────────┤
+│ No Decimal Point    │ • Erosion Size: 0               │
+│ Display             │ • Closing Size: 0               │
+│ (Need decimal)      │ • Decimal Position: 0.01/0.001  │
+│                     │ • Select precision as needed    │
+└─────────────────────┴────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+【Technical Details】
+═══════════════════════════════════════════════════════════════
+
+【Recognition Principle】
+
+This program uses computer vision and PaddleOCR technology to recognize 
+7-segment displays:
+
+1. Image Preprocessing
+   • Grayscale: Convert color image to grayscale
+   • Binarization: Use Otsu adaptive threshold segmentation
+   • Small object filtering: Remove noise based on size
+   • Border addition: Add margins (15 pixels) to improve recognition
+   • Optional: Erosion operation (rectangular kernel)
+     - If enabled and decimal point detected:
+       * Detect decimal point (minimum area < 1/4 of second minimum)
+       * Expand horizontal spacing between other objects and decimal (4× kernel size)
+       * Dilate other objects to restore original state
+       * Replace decimal point with solid circle (diameter = max(4×kernel, ROI_height/15))
+   • Optional: Closing operation (rectangular kernel, protects decimal point)
+   • Size adjustment: Ensure image size suitable for OCR recognition
+
+2. SVTR_Tiny Digital-Specific Recognition
+   • Deep learning model: SVTR_Tiny custom-trained for digital displays
+   • Inference model preferred: inference.pdmodel + inference.pdiparams (24MB, faster)
+   • Training model backup: best_accuracy.pdparams (backup support)
+   • Custom dictionary: Only contains 0-9, -, . (12 characters total)
+   • Character whitelist: Only recognize "-0123456789."
+   • Confidence filtering: Automatically filter low confidence results
+   • Intelligent text recognition: Automatically detect and recognize digits
+   • Model management: Model included in project (./svtr_tiny_digital/), ready to use
+
+3. Result Validation
+   • Format checking: Verify compliance with numeric format
+   • Character filtering: Remove invalid characters
+   • Confidence screening: Keep only high-quality results
+
+【Supported Display Types】
+
+• 7-segment LED displays (most common)
+  - Various colors: red, green, blue, etc.
+  - Common anode or common cathode both work
+  
+• LCD digital displays
+  - Black background white digits
+  - White background black digits
+  
+• Other dot-matrix style numeric displays
+  - Requires digit shape close to standard 7-segment display
+
+
+【Technical Limitations】
+
+1. Requires fixed display position
+   • Display must be at same position in all images
+   • If position changes, need to select ROI for each image separately
+   
+2. Requires sufficient image quality
+   • Digits must be clearly legible
+   • Excessively blurry or damaged images cannot be recognized
+   
+3. Only supports 7-segment displays
+   • Does not support handwritten digits
+   • Does not support printed digits
+   • Does not support other non-standard fonts
+
+
+═══════════════════════════════════════════════════════════════
+【Author & Copyright Information】
+═══════════════════════════════════════════════════════════════
+
+Program Name: Device Readings Analyzer
+Version: 4.0.0
+Development Date: 2025-11-12
+
+Author: Lucien
+Email: lucien-6@qq.com
+
+License: MIT License
+Copyright © 2025 Lucien
+
+Permission is hereby granted, free of charge, to any person 
+obtaining a copy of this software and associated documentation 
+files (the "Software"), to deal in the Software without 
+restriction, including without limitation the rights to use, 
+copy, modify, merge, publish, distribute, sublicense, and/or 
+sell copies of the Software, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be 
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES
+OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+
+═══════════════════════════════════════════════════════════════
+     Thank you for using Device Readings Analyzer!
+                      
+            For questions or suggestions, contact:
+                  lucien-6@qq.com
+═══════════════════════════════════════════════════════════════
+
