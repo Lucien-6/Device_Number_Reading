@@ -258,11 +258,15 @@ Device_Number_Reading/
 │   │
 │   ├── core/                      # 核心功能模块
 │   │   ├── image_processor.py     # 图像处理
-│   │   └── digit_recognizer.py   # 数字识别（PaddleOCR）
+│   │   └── digit_recognizer.py    # 数字识别（PaddleOCR）
 │   │
-│   └── utils/                     # 工具模块
-│       ├── config.py              # 配置管理
-│       └── logger.py              # 日志管理
+│   ├── utils/                     # 工具模块
+│   │   ├── config.py              # 配置管理
+│   │   └── logger.py              # 日志管理
+│   │
+│   └── resources/                 # 资源文件
+│       ├── help_content_cn.txt    # 中文使用指南
+│       └── help_content_en.txt    # 英文使用指南
 │
 └── test_images/                   # 测试图像目录
 ```
@@ -493,6 +497,25 @@ in the Software without restriction...
 ---
 
 ## 🗺️ 更新日志
+
+### Version 4.0.1 (2025-11-13)
+
+**代码优化**：
+
+- ✨ **帮助文档分离**：将中英文使用指南从代码中分离为独立资源文件
+- 📂 **新增资源文件**：
+  - `src/resources/help_content_cn.txt` - 中文使用指南（~490行）
+  - `src/resources/help_content_en.txt` - 英文使用指南（~490行）
+- 🎯 **代码精简**：main_window.py 从 2088 行优化至 1236 行（减少 43%）
+- 🔧 **易于维护**：帮助文档可独立编辑，无需修改 Python 代码
+- 🌍 **国际化友好**：便于添加更多语言版本
+- 📝 **更新文档**：同步更新项目结构说明和 README
+
+**改进**：
+
+- 帮助文档加载采用 UTF-8 编码，确保中英文正确显示
+- 添加异常处理和降级机制，文件缺失时有友好提示
+- 保持所有功能完全兼容，无破坏性变更
 
 ### Version 4.0.0 (2025-11-12)
 
