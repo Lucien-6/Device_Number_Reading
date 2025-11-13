@@ -6,7 +6,7 @@ Handles digit recognition using PaddleOCR.
 Author: Lucien
 Email: lucien-6@qq.com
 License: MIT License
-Date: 2025-11-08
+Date: 2025-11-13
 """
 
 import os

@@ -49,13 +49,11 @@ venv.bak/
 .venv
 
 # Project specific
-templates/*.pkl
 test_images/
 output/
 *.xlsx
 *.xls
 *_backup.py
-config.json
 
 # Logs
 *.log

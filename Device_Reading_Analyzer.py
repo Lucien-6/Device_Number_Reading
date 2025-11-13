@@ -10,8 +10,8 @@ using computer vision and PaddleOCR SVTR_Tiny technology.
 Author: Lucien
 Email: lucien-6@qq.com
 License: MIT License
-Version: 4.0.0
-Date: 2025-11-12
+Version: 4.0.1
+Date: 2025-11-13
 """
 
 import sys
@@ -39,7 +39,7 @@ try:
 except ImportError as e:
     print(f"Required package missing: {str(e)}")
     print("Please install PaddleOCR:")
-    print("pip install paddlepaddle paddleocr")
+    print("pip install paddlepaddle==2.6.2 paddleocr==2.9.1")
     sys.exit(1)
 
 # Import from modular structure

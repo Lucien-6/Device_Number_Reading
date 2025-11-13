@@ -1,16 +1,8 @@
 """
 Utility Module
 
-This module contains utility functions and classes including:
-- Logger
-- Configuration management
+This module is reserved for future utility functions and classes.
 """
 
-from .logger import LogManager
-from .config import AppConfig
-
-__all__ = [
-    'LogManager',
-    'AppConfig'
-]
+__all__ = []
 

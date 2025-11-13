@@ -65,7 +65,7 @@ class DeviceReadingsAnalyzer:
         self.decimal_position = tk.StringVar(value="Keep")
         
         # Application metadata
-        self.version = "4.0.0"
+        self.version = "4.0.1"
         self.author = "Lucien"
         self.email = "lucien-6@qq.com"
         self.license = "MIT License"
@@ -73,37 +73,11 @@ class DeviceReadingsAnalyzer:
         # Preview photo reference
         self.preview_photo = None
         
-        # Check if this is first run (model download prompt)
-        self.check_first_run()
-        
         # Create the main UI
         self.create_ui()
         
         # Initialize log
         self.log("Application started. Please load an image sequence.")
-    
-    def check_first_run(self):
-        """
-        Check if this is the first run and prompt for model download
-        """
-        # Check correct path for PP-OCRv5 models
-        model_path = os.path.expanduser('~/.paddlex/official_models')
-        v5_det_model = os.path.join(model_path, 'PP-OCRv5_server_det')
-        v5_rec_model = os.path.join(model_path, 'PP-OCRv5_server_rec')
-        
-        # Only show popup if models don't exist
-        if not (os.path.exists(v5_det_model) and os.path.exists(v5_rec_model)):
-            messagebox.showinfo(
-                "First Run - PP-OCRv5 Model Download",
-                "This application uses PaddleOCR PP-OCRv5 for digit recognition.\n\n"
-                "First run will download required models (~173 MB):\n"
-                "  • Detection model: ~88 MB\n"
-                "  • Recognition model: ~85 MB\n\n"
-                "This may take 1-2 minutes depending on your network speed.\n"
-                "Models will be cached for future use.\n\n"
-                "Please ensure network connection and wait while initializing...",
-                parent=self.root
-            )
     
     def create_ui(self):
         # Create menu bar
@@ -735,7 +709,7 @@ class DeviceReadingsAnalyzer:
                 thresh = self.image_processor.preprocess_roi(roi)
 
                 try:
-                    # Recognize using PaddleOCR PP-OCRv5 with detailed logging
+                    # Recognize using PaddleOCR SVTR_Tiny with detailed logging
                     def recognition_log(message, level='info'):
                         """Log recognition details with image index"""
                         self.log(f"Image {i+1}: {message}", level)

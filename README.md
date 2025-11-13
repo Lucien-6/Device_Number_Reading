@@ -260,9 +260,7 @@ Device_Number_Reading/
 │   │   ├── image_processor.py     # 图像处理
 │   │   └── digit_recognizer.py    # 数字识别（PaddleOCR）
 │   │
-│   ├── utils/                     # 工具模块
-│   │   ├── config.py              # 配置管理
-│   │   └── logger.py              # 日志管理
+│   ├── utils/                     # 工具模块（预留）
 │   │
 │   └── resources/                 # 资源文件
 │       ├── help_content_cn.txt    # 中文使用指南

@@ -1,0 +1,26 @@
+{
+    "version": "4.0.1",
+    "last_modified": "2025-11-13",
+    "model": {
+        "type": "SVTR_Tiny",
+        "description": "Custom-trained SVTR_Tiny model for digital display recognition",
+        "model_dir": "./svtr_tiny_digital",
+        "model_file": "best_accuracy.pdparams",
+        "model_size_mb": 24,
+        "dict_file": "./digital_dict.txt",
+        "input_shape": "3x64x256",
+        "algorithm": "SVTR",
+        "decoder": "CTC",
+        "supported_characters": "0123456789-.",
+        "reference": "https://www.paddleocr.ai/v2.9.1/applications/%E5%85%89%E5%8A%9F%E7%8E%87%E8%AE%A1%E6%95%B0%E7%A0%81%E7%AE%A1%E5%AD%97%E7%AC%A6%E8%AF%86%E5%88%AB.html"
+    },
+    "breaking_changes": {
+        "v4.0.0": [
+            "Migrated from PP-OCRv5 general model to SVTR_Tiny digital-specific model",
+            "Removed automatic model download (uses local trained model)",
+            "Custom dictionary with only 0-9, minus sign, and decimal point",
+            "Improved accuracy for digital display recognition",
+            "Smaller model size (24MB vs 173MB)"
+        ]
+    }
+}
