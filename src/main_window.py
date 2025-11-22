@@ -73,6 +73,9 @@ class DeviceReadingsAnalyzer:
         # Preview photo reference
         self.preview_photo = None
         
+        # Scatter plot reference for pick events
+        self.scatter_plot = None
+        
         # Create the main UI
         self.create_ui()
         
@@ -234,6 +237,9 @@ class DeviceReadingsAnalyzer:
         
         self.canvas_plot = FigureCanvasTkAgg(self.figure, graph_frame)
         self.canvas_plot.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+        
+        # Bind pick event for data point clicking
+        self.canvas_plot.mpl_connect('pick_event', self.on_plot_pick)
         
         # Create log panel
         log_frame = ttk.LabelFrame(results_frame, text="Log", width=400)
@@ -1047,9 +1053,47 @@ class DeviceReadingsAnalyzer:
         """Update plot (called in main thread)"""
         try:
             self.plot.clear()
-            if self.time_values and self.readings:
+            if self.time_values and self.readings and self.confidences:
+                # Ensure all lists have the same length
+                data_length = min(len(self.time_values), len(self.readings), len(self.confidences))
+                
+                if data_length == 0:
+                    return
+                
+                # Prepare data arrays
+                times = self.time_values[:data_length]
+                readings = self.readings[:data_length]
+                confidences = self.confidences[:data_length]
+                
+                # Assign colors based on confidence values
+                colors = []
+                for conf in confidences:
+                    if np.isnan(conf):
+                        # NaN values -> black
+                        colors.append('black')
+                    elif conf < 0.75:
+                        # Confidence < 0.75 -> red
+                        colors.append('red')
+                    elif conf < 0.9:
+                        # 0.75 <= Confidence < 0.9 -> orange
+                        colors.append('orange')
+                    else:
+                        # Confidence >= 0.9 -> green
+                        colors.append('green')
+                
+                # Draw scatter plot with picker enabled
+                self.scatter_plot = self.plot.scatter(
+                    times,
+                    readings,
+                    c=colors,
+                    s=50,
+                    marker='o',
+                    picker=True,
+                    pickradius=5
+                )
+                
+                # Set axis labels and grid
                 unit = self.time_unit.get()
-                self.plot.plot(self.time_values, self.readings, 'bo-')
                 self.plot.set_xlabel(f'Time ({unit})')
                 self.plot.set_ylabel(f'Reading ({self.reading_unit.get()})')
                 self.plot.grid(True)
@@ -1057,6 +1101,79 @@ class DeviceReadingsAnalyzer:
                 self.canvas_plot.draw()
         except Exception as e:
             self.log(f"Error updating plot: {str(e)}", "error")
+    
+    def on_plot_pick(self, event):
+        """Handle pick event when user clicks on a data point in the plot"""
+        try:
+            # Check if the picked artist is our scatter plot
+            if self.scatter_plot is None or event.artist != self.scatter_plot:
+                return
+            
+            # Check if image processing is currently running (disable jumping during processing)
+            if self.processing_thread and self.processing_thread.is_alive():
+                self.log("Cannot jump to frame during image processing", "warning")
+                return
+            
+            # Check if image files are loaded
+            if not self.image_files:
+                self.log("No image files loaded", "warning")
+                return
+            
+            # Get the index of the clicked data point
+            # event.ind is an array of indices, take the first one
+            ind = event.ind[0]
+            
+            # Boundary check
+            if ind < 0 or ind >= len(self.image_files):
+                self.log(f"Invalid frame index: {ind}", "error")
+                return
+            
+            # Jump to the corresponding frame
+            self.jump_to_frame(ind)
+            
+        except Exception as e:
+            self.log(f"Error handling plot pick event: {str(e)}", "error")
+    
+    def jump_to_frame(self, frame_index):
+        """Jump to the specified frame in the image preview
+        
+        Args:
+            frame_index: Index of the frame to jump to (0-based)
+        """
+        try:
+            # Update current image index
+            self.current_image_index = frame_index
+            
+            # Synchronize slider position
+            self.image_slider.set(frame_index)
+            
+            # Display the corresponding image
+            self.show_current_image()
+            
+            # Prepare log feedback information
+            time_val = self.time_values[frame_index] if frame_index < len(self.time_values) else "N/A"
+            reading_val = self.readings[frame_index] if frame_index < len(self.readings) else "N/A"
+            conf_val = self.confidences[frame_index] if frame_index < len(self.confidences) else float('nan')
+            
+            unit = self.time_unit.get()
+            reading_unit = self.reading_unit.get()
+            
+            # Format confidence value
+            if isinstance(conf_val, float) and not np.isnan(conf_val):
+                conf_str = f"{conf_val:.3f}"
+            else:
+                conf_str = "N/A"
+            
+            # Log the jump action with detailed information
+            self.log(
+                f"Jumped to frame {frame_index + 1}/{self.total_images}: "
+                f"Time={time_val} {unit}, Reading={reading_val} {reading_unit}, "
+                f"Confidence={conf_str}",
+                "info"
+            )
+            
+        except Exception as e:
+            self.log(f"Error jumping to frame {frame_index}: {str(e)}", "error")
     
     def export_to_excel(self):
         """Export the readings data to an Excel file"""

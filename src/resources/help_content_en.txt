@@ -17,8 +17,9 @@ Key Features:
 • No external installation, model included in project, ready to use
 • Support for negative numbers and decimal points
 • Support for decimal position adjustment (Keep/None/0.1/0.01/0.001/0.0001)
-• Real-time data curve display
-• One-click export to Excel format
+• Smart data visualization: dynamic color-coded scatter plot based on confidence
+• Interactive image navigation: click data points to view corresponding frames
+• One-click export to Excel format (with confidence column)
 
 ═══════════════════════════════════════════════════════════════
 【Usage Workflow】
@@ -131,12 +132,17 @@ Step 4: Process Images
 3. During processing:
    • Image preview area shows currently processing image
    • Log window displays real-time recognition results
-   • Chart area dynamically updates data curve
+   • Chart area dynamically updates scatter plot (color-coded by confidence)
+     - 🟢 Green: High confidence (≥ 0.9)
+     - 🟠 Orange: Medium confidence (0.75 ~ 0.89)
+     - 🔴 Red: Low confidence (< 0.75)
+     - ⚫ Black: Recognition failed (NaN)
    • Image slider automatically moves to current position
    • Click "Stop Processing" button to abort at any time
+   • Note: Interactive jumping disabled during processing
 
 4. Log message descriptions:
-   • Green [INFO]: Successfully recognized
+   • Black [INFO]: Successfully recognized
      Example: Image 1: 0.00 seconds → 25.3 °C
    • Orange [WARNING]: Recognition failed or invalid reading
      Example: Image 5: No valid reading
@@ -144,9 +150,55 @@ Step 4: Process Images
      Example: Recognition error on image 10: ...
 
 5. Statistics displayed upon completion
+6. Interactive navigation available after processing completes
 
 
-Step 5: Export Data
+Step 5: View and Interact (New Feature)
+─────────────────────────────────────────────────────────────
+
+【Confidence Visualization】
+
+After processing completes, scatter plot displays data points with different 
+colors representing recognition confidence:
+
+• 🟢 Green points (Confidence ≥ 0.9)
+  - High confidence recognition, highly reliable
+  - Usually no manual verification needed
+  
+• 🟠 Orange points (Confidence 0.75 ~ 0.89)
+  - Medium confidence recognition, generally reliable
+  - Recommended to spot-check, verify if anomalies present
+  
+• 🔴 Red points (Confidence < 0.75)
+  - Low confidence recognition, lower reliability
+  - Strongly recommend manual verification of corresponding images
+  
+• ⚫ Black points (NaN - Recognition failed)
+  - Complete recognition failure
+  - Need to check original images or adjust parameters
+
+【Interactive Image Navigation】
+
+1. Click any data point on scatter plot
+2. Image preview area automatically jumps to corresponding frame
+3. Image slider synchronizes to corresponding position
+4. Log window displays jump information:
+   • Frame number (e.g., Frame 15/100)
+   • Time value (e.g., 14.5 s)
+   • Reading value (e.g., 25.3 °C)
+   • Confidence (e.g., 0.876)
+
+Usage Suggestions:
+• Quick QC: Click red or black points to quickly locate problem images
+• Data validation: Click orange points for spot-checking
+• Trend analysis: Observe color distribution to understand overall quality
+
+Notes:
+• Interactive jumping disabled during image processing
+• Available immediately after processing completes
+
+
+Step 6: Export Data
 ─────────────────────────────────────────────────────────────
 
 1. After processing, File → Export to Excel in menu bar becomes enabled
@@ -157,6 +209,7 @@ Step 5: Export Data
 Exported file contains:
 • First column: Time (with unit)
 • Second column: Reading (with unit)
+• Third column: Confidence (for quality assessment)
 • Sheet name: Device Readings
 • Can be opened directly in Excel, Origin, etc. for analysis
 
