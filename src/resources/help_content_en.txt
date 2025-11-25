@@ -506,8 +506,8 @@ This program uses computer vision and PaddleOCR technology to recognize
 ═══════════════════════════════════════════════════════════════
 
 Program Name: Device Readings Analyzer
-Version: 4.0.0
-Development Date: 2025-11-12
+Version: 4.0.2
+Development Date: 2025-11-22
 
 Author: Lucien
 Email: lucien-6@qq.com

@@ -1,6 +1,6 @@
 {
-    "version": "4.0.1",
-    "last_modified": "2025-11-13",
+    "version": "4.0.2",
+    "last_modified": "2025-11-22",
     "model": {
         "type": "SVTR_Tiny",
         "description": "Custom-trained SVTR_Tiny model for digital display recognition",

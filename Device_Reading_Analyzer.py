@@ -10,8 +10,8 @@ using computer vision and PaddleOCR SVTR_Tiny technology.
 Author: Lucien
 Email: lucien-6@qq.com
 License: MIT License
-Version: 4.0.1
-Date: 2025-11-13
+Version: 4.0.2
+Date: 2025-11-22
 """
 
 import sys

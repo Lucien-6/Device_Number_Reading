@@ -5,7 +5,7 @@
 ```
 Device_Number_Reading/
 │
-├── 📄 Device_Reading_Analyzer.py          # 程序主入口（模块化架构，v4.0.0）
+├── 📄 Device_Reading_Analyzer.py          # 程序主入口（模块化架构，v4.0.2）
 │
 ├── 📂 src/                                 # 源代码模块目录
 │   ├── 📄 __init__.py                      # 包初始化
@@ -65,7 +65,7 @@ python Device_Reading_Analyzer.py
 - 帮助文档已从代码中分离为独立资源文件（中英文各约490行）
 - main_window.py 从 2088 行优化至 1236 行（减少 43% 代码量）
 - 所有功能完整可用，代码结构清晰，易于维护
-- 版本：v4.0.1（2025-11-13）
+- 版本：v4.0.2（2025-11-22）
 
 ## 🌟 完整实现的模块
 
@@ -158,7 +158,7 @@ Phase 8: 测试优化 ✅
 ### 核心模块 (src/core/)
 
 **digit_recognizer.py** ✨
-- **SVTR_Tiny 数码管专用识别引擎**（v4.0.0）
+- **SVTR_Tiny 数码管专用识别引擎**（v4.0.2）
 - **推理模型优先支持**：
   - inference.pdmodel + inference.pdiparams（推荐，速度更快）
   - best_accuracy.pdparams（训练模型，备用）
@@ -273,8 +273,8 @@ python Device_Reading_Analyzer_modular.py
 - **开发者**: Lucien
 - **邮箱**: lucien-6@qq.com
 - **许可证**: MIT License
-- **版本**: 4.0.1
-- **更新日期**: 2025-11-13
+- **版本**: 4.0.2
+- **更新日期**: 2025-11-22
 
 ---
 

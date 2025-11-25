@@ -9,7 +9,7 @@ Email: lucien-6@qq.com
 License: MIT License
 """
 
-__version__ = "4.0.1"
+__version__ = "4.0.2"
 __author__ = "Lucien"
 __email__ = "lucien-6@qq.com"
 

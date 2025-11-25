@@ -65,7 +65,7 @@ class DeviceReadingsAnalyzer:
         self.decimal_position = tk.StringVar(value="Keep")
         
         # Application metadata
-        self.version = "4.0.1"
+        self.version = "4.0.2"
         self.author = "Lucien"
         self.email = "lucien-6@qq.com"
         self.license = "MIT License"
