@@ -198,6 +198,85 @@ Notes:
 • Available immediately after processing completes
 
 
+Step 5.5: Manual Correction Feature (New Feature)
+─────────────────────────────────────────────────────────────
+
+After batch processing is complete, you can manually correct individual 
+recognition errors.
+
+【Trigger Methods】
+
+Method 1: Keyboard Shortcut
+• Use slider or D/F keys to navigate to the image needing correction
+• Press Ctrl+R shortcut to open correction dialog
+
+Method 2: Double-click Image
+• Use slider or D/F keys to navigate to the image needing correction
+• Double-click the image in preview window to open correction dialog
+
+【Correction Operation】
+
+1. When correction dialog appears, enter the correct value in input field
+2. Click "Confirm" button or press Enter to confirm correction
+3. Click "Cancel" button or press Esc to cancel correction
+
+【Correction Results】
+
+• Program automatically updates corresponding data point in scatter plot
+• Preview window annotation updates to show corrected value
+• Corrected value confidence automatically set to 1.0 (100%)
+• Exported Excel uses corrected results
+
+Notes:
+• This feature only available after batch processing completes
+• Cannot perform manual correction during processing
+• Input must be valid number (supports integers, decimals, negative numbers)
+
+
+Step 5.6: Export Training Data (New Feature)
+─────────────────────────────────────────────────────────────
+
+After batch processing is complete, you can export the current results 
+as PaddleOCR training data format for subsequent model fine-tuning or training.
+
+【Trigger Methods】
+
+Method 1: Menu
+• Click File → Export to Train Data
+
+Method 2: Keyboard Shortcut
+• Press Ctrl+T
+
+【Export Contents】
+
+1. Image Files
+   • Only exports ROI-cropped original images (without preprocessing)
+   • Naming format: img_00000.png, img_00001.png, ...
+   • Saved in train_images subdirectory
+
+2. Label File
+   • Filename: rec_gt_train.txt
+   • Format: relative_image_path + Tab + label
+   • Example: train_images/img_00000.png	-70.00
+
+【Export Directory Structure】
+
+Selected_Export_Directory/
+├── train_images/           # Image directory
+│   ├── img_00000.png
+│   ├── img_00001.png
+│   └── ...
+└── rec_gt_train.txt        # Label file
+
+【Notes】
+
+• This feature is only available after batch processing is complete
+• Images with invalid recognition results (no label) will be skipped
+• Manually corrected results will be exported correctly
+• Statistics will be displayed after export (exported count, skipped count)
+• Exported data can be directly used for PaddleOCR recognition model training
+
+
 Step 6: Export Data
 ─────────────────────────────────────────────────────────────
 
@@ -506,8 +585,8 @@ This program uses computer vision and PaddleOCR technology to recognize
 ═══════════════════════════════════════════════════════════════
 
 Program Name: Device Readings Analyzer
-Version: 4.0.2
-Development Date: 2025-11-22
+Version: 5.0.0
+Development Date: 2025-12-03
 
 Author: Lucien
 Email: lucien-6@qq.com

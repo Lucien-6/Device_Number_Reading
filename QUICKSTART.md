@@ -53,7 +53,9 @@ my_readings/
 
 2. 点击 `Process Images` 开始处理
 
-3. 处理完成后，点击 `Export to Excel`
+3. 如需修正识别结果：按 `Ctrl+R` 或双击图像进行手动校正
+
+4. 处理完成后，点击 `Export to Excel`
 
 **完成！** 🎉 您的数据已导出到Excel文件。
 
@@ -85,7 +87,7 @@ my_readings/
 
 | 场景 | 推荐设置 |
 |------|----------|
-| **标准识别** | Erosion Size: 0, Closing Size: 0, Decimal Position: Keep，ROI紧凑，使用SVTR_Tiny推理模型 |
+| **标准识别** | Erosion Size: 0, Closing Size: 0, Decimal Position: Keep，ROI紧凑 |
 | **低质量图像** | Erosion Size: 2, Closing Size: 5, Decimal Position: Keep |
 | **噪声较多** | Erosion Size: 2-3, Closing Size: 0, Decimal Position: Keep（自动处理小数点） |
 | **断笔严重** | Erosion Size: 0, Closing Size: 3-5, Decimal Position: Keep |
@@ -181,6 +183,20 @@ Decimal Position: Keep
   - 统一不同图像的小数位数格式
   - 去除小数点（选择 "None"）
   - 转换整数为小数（选择目标精度）
+
+### Q: 个别识别结果有误？
+
+**A**：使用手动校正功能
+- **触发方式**：
+  - 方式一：导航到目标图像后按 `Ctrl+R`
+  - 方式二：双击预览窗口中的图像
+- **校正步骤**：
+  1. 在弹出对话框中输入正确数值
+  2. 点击 `Confirm` 或按 `Enter` 确认
+  3. 程序自动更新散点图和预览标注
+- **注意事项**：
+  - 仅在批量处理完成后可用
+  - 校正后置信度自动设为 1.0 (100%)
 
 ---
 

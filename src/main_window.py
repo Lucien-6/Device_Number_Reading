@@ -46,6 +46,7 @@ class DeviceReadingsAnalyzer:
         self.readings = []
         self.time_values = []
         self.confidences = []
+        self.reading_strings = []  # Store recognition result strings for annotation
         self.processing_thread = None
         self.stop_processing = False
         
@@ -65,7 +66,7 @@ class DeviceReadingsAnalyzer:
         self.decimal_position = tk.StringVar(value="Keep")
         
         # Application metadata
-        self.version = "4.0.2"
+        self.version = "5.0.0"
         self.author = "Lucien"
         self.email = "lucien-6@qq.com"
         self.license = "MIT License"
@@ -92,6 +93,7 @@ class DeviceReadingsAnalyzer:
         menubar.add_cascade(label="File", menu=self.file_menu)
         self.file_menu.add_command(label="Load Image Sequence", command=self.load_image_sequence, accelerator="Ctrl+L")
         self.file_menu.add_command(label="Export to Excel", command=self.export_to_excel, accelerator="Ctrl+E", state=tk.DISABLED)
+        self.file_menu.add_command(label="Export to Train Data", command=self.export_to_train_data, accelerator="Ctrl+T", state=tk.DISABLED)
         self.file_menu.add_separator()
         self.file_menu.add_command(label="Exit", command=self.root.quit)
         
@@ -125,6 +127,7 @@ class DeviceReadingsAnalyzer:
         self.canvas.bind("<ButtonPress-1>", self.on_mouse_down)
         self.canvas.bind("<B1-Motion>", self.on_mouse_move)
         self.canvas.bind("<ButtonRelease-1>", self.on_mouse_up)
+        self.canvas.bind("<Double-Button-1>", lambda e: self.show_manual_correction_dialog())
         
         # Image navigation controls
         nav_frame = ttk.Frame(self.image_panel_frame)
@@ -259,6 +262,8 @@ class DeviceReadingsAnalyzer:
         self.root.bind('<Control-L>', lambda e: self.load_image_sequence())
         self.root.bind('<Control-e>', lambda e: self.export_to_excel())
         self.root.bind('<Control-E>', lambda e: self.export_to_excel())
+        self.root.bind('<Control-t>', lambda e: self.export_to_train_data())
+        self.root.bind('<Control-T>', lambda e: self.export_to_train_data())
         self.root.bind('d', lambda e: self.previous_image())
         self.root.bind('D', lambda e: self.previous_image())
         self.root.bind('f', lambda e: self.next_image())
@@ -268,6 +273,8 @@ class DeviceReadingsAnalyzer:
         self.root.bind('<Control-Return>', lambda e: self.start_processing())
         self.root.bind('<Control-h>', lambda e: self.show_help_window())
         self.root.bind('<Control-H>', lambda e: self.show_help_window())
+        self.root.bind('<Control-r>', lambda e: self.show_manual_correction_dialog())
+        self.root.bind('<Control-R>', lambda e: self.show_manual_correction_dialog())
     
     def log(self, message, level="info"):
         """Add message to the log display with color based on level"""
@@ -384,9 +391,11 @@ class DeviceReadingsAnalyzer:
         
         self.readings = []
         self.confidences = []
+        self.reading_strings = []  # Reset reading strings
         self.update_plot()
         self.roi_selected = False
         self.file_menu.entryconfig("Export to Excel", state=tk.DISABLED)
+        self.file_menu.entryconfig("Export to Train Data", state=tk.DISABLED)
     
     def show_current_image(self):
         """Display the current image on the canvas"""
@@ -396,7 +405,62 @@ class DeviceReadingsAnalyzer:
         self.image_counter_label.config(text=f"{self.current_image_index + 1}/{self.total_images}")
         
         image_path = os.path.join(self.image_folder, self.image_files[self.current_image_index])
-        self.display_image(image_path)
+        
+        # Check if we have recognition results for this image
+        idx = self.current_image_index
+        has_results = (self.roi_selected and 
+                       idx < len(self.reading_strings) and 
+                       idx < len(self.confidences))
+        
+        if has_results:
+            # Display annotated image with recognition results
+            self._show_annotated_current_image(image_path, idx)
+        else:
+            # Display original image
+            self.display_image(image_path)
+    
+    def _show_annotated_current_image(self, image_path, idx):
+        """
+        Display annotated image for the specified index
+        
+        Args:
+            image_path: Path to the image file
+            idx: Index of the image in the sequence
+        """
+        try:
+            # Read image
+            img = cv2.imread(image_path)
+            if img is None:
+                self.display_image(image_path)
+                return
+            
+            # Extract ROI
+            roi = img[self.orig_roi_start_y:self.orig_roi_end_y,
+                      self.orig_roi_start_x:self.orig_roi_end_x]
+            
+            # Set preprocessing parameters
+            self.image_processor.set_preprocessing_params(
+                erosion_size=self.erosion_size.get(),
+                closing_size=self.closing_size.get()
+            )
+            self.digit_recognizer.set_closing_size(self.closing_size.get())
+            
+            # Preprocess ROI
+            thresh = self.image_processor.preprocess_roi(roi)
+            
+            # Get OCR input image
+            ocr_img = self.digit_recognizer.preprocess_for_ocr(thresh)
+            
+            # Get stored results
+            reading_str = self.reading_strings[idx]
+            confidence = self.confidences[idx]
+            
+            # Display annotated image
+            self.display_annotated_image(img, reading_str, confidence, ocr_img)
+            
+        except Exception as e:
+            self.log(f"Error showing annotated image: {str(e)}", "error")
+            self.display_image(image_path)
     
     def on_slider_change(self, value):
         """Handle image slider value change"""
@@ -515,6 +579,189 @@ class DeviceReadingsAnalyzer:
                 
         except Exception as e:
             self.log(f"Error displaying image: {str(e)}", "error")
+    
+    def display_annotated_image(self, img, reading_str, confidence, ocr_img):
+        """
+        Display image with recognition result annotation on the canvas
+        
+        Args:
+            img: OpenCV BGR image (numpy.ndarray)
+            reading_str: Recognition result string (can be None)
+            confidence: Recognition confidence (float, can be nan)
+            ocr_img: OCR input image after preprocessing (numpy.ndarray)
+        """
+        try:
+            # Copy original image for annotation
+            display_img = img.copy()
+            
+            # Get ROI dimensions
+            roi_height = self.orig_roi_end_y - self.orig_roi_start_y
+            roi_width = self.orig_roi_end_x - self.orig_roi_start_x
+            
+            # Draw ROI rectangle (green)
+            cv2.rectangle(display_img, 
+                         (self.orig_roi_start_x, self.orig_roi_start_y),
+                         (self.orig_roi_end_x, self.orig_roi_end_y),
+                         (0, 255, 0), 2)
+            
+            # Convert OCR image to BGR for display
+            if len(ocr_img.shape) == 2:
+                # Grayscale image: convert to BGR
+                ocr_img_bgr = cv2.cvtColor(ocr_img, cv2.COLOR_GRAY2BGR)
+            elif len(ocr_img.shape) == 3:
+                # Color image: already BGR format, use as-is
+                ocr_img_bgr = ocr_img
+            else:
+                # Fallback: convert to BGR
+                ocr_img_bgr = cv2.cvtColor(ocr_img, cv2.COLOR_GRAY2BGR)
+            
+            # Get actual OCR image dimensions (no resizing)
+            ocr_img_height, ocr_img_width = ocr_img_bgr.shape[:2]
+            
+            # Calculate position for OCR image (below original ROI)
+            preview_y_start = self.orig_roi_end_y + 5
+            preview_y_end = preview_y_start + ocr_img_height
+            preview_x_start = self.orig_roi_start_x
+            preview_x_end = self.orig_roi_start_x + ocr_img_width
+            
+            # Check if preview fits within image bounds
+            img_height, img_width = display_img.shape[:2]
+            
+            if preview_y_end <= img_height and preview_x_end <= img_width:
+                # Place OCR image directly on the image
+                display_img[preview_y_start:preview_y_end,
+                           preview_x_start:preview_x_end] = ocr_img_bgr
+                
+                # Draw rectangle around OCR image (blue)
+                cv2.rectangle(display_img,
+                             (preview_x_start, preview_y_start),
+                             (preview_x_end, preview_y_end),
+                             (255, 0, 0), 2)
+            else:
+                # Expand image if needed (vertically or horizontally)
+                extra_height = max(0, preview_y_end - img_height)
+                extra_width = max(0, preview_x_end - img_width)
+                new_height = img_height + extra_height
+                new_width = img_width + extra_width
+                
+                expanded_img = np.zeros((new_height, new_width, 3), dtype=np.uint8)
+                expanded_img[0:img_height, 0:img_width] = display_img
+                expanded_img[preview_y_start:preview_y_end,
+                            preview_x_start:preview_x_end] = ocr_img_bgr
+                cv2.rectangle(expanded_img,
+                             (preview_x_start, preview_y_start),
+                             (preview_x_end, preview_y_end),
+                             (255, 0, 0), 2)
+                display_img = expanded_img
+            
+            # Convert to PIL RGB for canvas display
+            pil_display_img = Image.fromarray(
+                cv2.cvtColor(display_img, cv2.COLOR_BGR2RGB)
+            )
+            
+            # Draw text annotation above ROI region
+            draw = ImageDraw.Draw(pil_display_img)
+            
+            # Calculate font size: quarter of ROI height
+            font_size = int(roi_height / 4)
+            font_size = max(12, min(font_size, 48))  # Clamp between 12 and 48
+            
+            # Load Arial Bold font
+            try:
+                font = ImageFont.truetype("arialbd.ttf", font_size)
+            except:
+                try:
+                    font_path = os.path.join(os.environ.get('WINDIR', 'C:\\Windows'), 'Fonts', 'arialbd.ttf')
+                    font = ImageFont.truetype(font_path, font_size)
+                except:
+                    font = ImageFont.load_default()
+            
+            # Determine text color based on confidence
+            if reading_str and reading_str != "":
+                if np.isnan(confidence):
+                    text_color = (255, 0, 0)  # Red for NaN
+                    annotation_text = f"Result: {reading_str} (conf=N/A)"
+                elif confidence >= 0.9:
+                    text_color = (0, 255, 0)  # Green for high confidence
+                    annotation_text = f"Result: {reading_str} (conf={confidence:.3f})"
+                elif confidence >= 0.75:
+                    text_color = (255, 165, 0)  # Orange for medium confidence
+                    annotation_text = f"Result: {reading_str} (conf={confidence:.3f})"
+                else:
+                    text_color = (255, 0, 0)  # Red for low confidence
+                    annotation_text = f"Result: {reading_str} (conf={confidence:.3f})"
+            else:
+                # Recognition failed
+                text_color = (255, 0, 0)  # Red
+                annotation_text = "No valid reading"
+            
+            # Calculate text position (above ROI, centered horizontally)
+            bbox = draw.textbbox((0, 0), annotation_text, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_height = bbox[3] - bbox[1]
+            
+            # Position text above ROI region (with 10 pixel margin)
+            text_x = self.orig_roi_start_x + (roi_width - text_width) // 2
+            text_y = self.orig_roi_start_y - text_height - 10
+            
+            # Ensure text is within image bounds
+            text_x = max(0, min(text_x, pil_display_img.width - text_width))
+            text_y = max(0, text_y)
+            
+            # Draw text
+            draw.text((text_x, text_y), annotation_text, font=font, fill=text_color)
+            
+            # Store as original_img for consistency
+            self.original_img = pil_display_img
+            
+            # Get canvas dimensions
+            canvas_width = self.canvas.winfo_width()
+            canvas_height = self.canvas.winfo_height()
+            
+            if canvas_width <= 1 or canvas_height <= 1:
+                canvas_width = 600
+                canvas_height = 400
+            
+            # Get image dimensions
+            img_width, img_height = pil_display_img.size
+            
+            # Calculate aspect ratios
+            aspect_ratio = img_width / img_height
+            canvas_ratio = canvas_width / canvas_height
+            
+            # Scale to fit while preserving aspect ratio
+            if aspect_ratio > canvas_ratio:
+                new_width = canvas_width
+                new_height = int(canvas_width / aspect_ratio)
+            else:
+                new_height = canvas_height
+                new_width = int(canvas_height * aspect_ratio)
+            
+            # Resize image to fit canvas
+            resized_img = pil_display_img.resize((new_width, new_height),
+                                                 Image.Resampling.LANCZOS)
+            photo = ImageTk.PhotoImage(resized_img)
+            
+            # Store references
+            self.current_img = resized_img
+            self.current_photo = photo
+            self.display_width = new_width
+            self.display_height = new_height
+            
+            # Display on canvas
+            self.canvas.delete("all")
+            self.canvas.create_image(canvas_width // 2, canvas_height // 2,
+                                    image=photo, anchor=tk.CENTER, tags="image")
+            
+        except Exception as e:
+            self.log(f"Error displaying annotated image: {str(e)}", "error")
+    
+    def _display_annotated_image_wrapper(self, img, reading_str, confidence, ocr_img):
+        """Thread-safe wrapper for display_annotated_image"""
+        try:
+            self.display_annotated_image(img, reading_str, confidence, ocr_img)
+        except Exception as e:
+            self.log(f"Error in annotated image wrapper: {str(e)}", "error")
     
     def on_mouse_down(self, event):
         """Handle mouse button press for ROI selection"""
@@ -683,6 +930,7 @@ class DeviceReadingsAnalyzer:
             self.time_values = []
             self.readings = []
             self.confidences = []
+            self.reading_strings = []  # Initialize reading strings for annotation
             
             for i, img_file in enumerate(self.image_files):
                 if self.stop_processing:
@@ -697,6 +945,12 @@ class DeviceReadingsAnalyzer:
                 img_path = os.path.join(self.image_folder, img_file)
                 img = cv2.imread(img_path)
                 if img is None:
+                    # Append NaN values to keep lists synchronized
+                    self.readings.append(float('nan'))
+                    self.confidences.append(float('nan'))
+                    self.reading_strings.append(None)
+                    self.log(f"Image {i+1}: Failed to read image", "error")
+                    self.update_plot()
                     continue
                 
                 roi = img[self.orig_roi_start_y:self.orig_roi_end_y,
@@ -745,12 +999,25 @@ class DeviceReadingsAnalyzer:
                     self.readings.append(float('nan'))
                     self.confidences.append(float('nan'))
                     self.log(f"Recognition error on image {i+1}: {str(e)}", "error")
+                    reading_str = None  # Ensure reading_str is defined for annotation
+                
+                # Store reading string for annotation display when navigating
+                self.reading_strings.append(reading_str)
                 
                 self.update_plot()
                 
-                self.root.after(0, self.display_image, os.path.join(self.image_folder, img_file))
+                # Get OCR input image for annotation display
+                ocr_img = self.digit_recognizer.preprocess_for_ocr(thresh)
+                
+                # Get current confidence for annotation
+                current_confidence = self.digit_recognizer.last_confidence
+                
+                # Display annotated image with recognition result
+                self.root.after(0, self._display_annotated_image_wrapper, 
+                               img, reading_str, current_confidence, ocr_img)
                 
             self.root.after(0, lambda: self.file_menu.entryconfig("Export to Excel", state=tk.NORMAL if self.readings else tk.DISABLED))
+            self.root.after(0, lambda: self.file_menu.entryconfig("Export to Train Data", state=tk.NORMAL if self.readings else tk.DISABLED))
             self.log("Processing completed!" if not self.stop_processing else "Processing stopped.", "info")
 
         except Exception as e:
@@ -1175,6 +1442,147 @@ class DeviceReadingsAnalyzer:
         except Exception as e:
             self.log(f"Error jumping to frame {frame_index}: {str(e)}", "error")
     
+    def show_manual_correction_dialog(self):
+        """Display manual correction dialog for current image
+        
+        Allows user to manually correct the recognition result for the
+        currently displayed image. Available only after batch processing
+        is complete.
+        """
+        # Check preconditions
+        if not self.image_files:
+            messagebox.showwarning("Warning", "Please load an image sequence first.")
+            return
+        
+        if self.processing_thread and self.processing_thread.is_alive():
+            messagebox.showwarning("Warning", "Cannot correct during processing. Please wait for processing to complete.")
+            return
+        
+        if not self.readings or len(self.readings) == 0:
+            messagebox.showwarning("Warning", "No recognition results available. Please process images first.")
+            return
+        
+        if self.current_image_index >= len(self.readings):
+            messagebox.showwarning("Warning", "Current image has not been processed yet.")
+            return
+        
+        # Create modal dialog
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Manual Correction")
+        dialog.geometry("350x150")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+        
+        # Center the dialog
+        dialog.update_idletasks()
+        x = (dialog.winfo_screenwidth() // 2) - (350 // 2)
+        y = (dialog.winfo_screenheight() // 2) - (150 // 2)
+        dialog.geometry(f"350x150+{x}+{y}")
+        
+        # Get current frame information
+        idx = self.current_image_index
+        time_val = self.time_values[idx] if idx < len(self.time_values) else 0
+        unit = self.time_unit.get()
+        
+        # Frame info label
+        info_frame = ttk.Frame(dialog)
+        info_frame.pack(fill=tk.X, padx=20, pady=(15, 10))
+        
+        info_label = ttk.Label(
+            info_frame,
+            text=f"Frame: {idx + 1}/{self.total_images}    Time: {time_val:.2f} {unit}",
+            font=("Arial", 10)
+        )
+        info_label.pack(anchor=tk.W)
+        
+        # Input frame
+        input_frame = ttk.Frame(dialog)
+        input_frame.pack(fill=tk.X, padx=20, pady=10)
+        
+        ttk.Label(input_frame, text="Corrected Value:", font=("Arial", 10)).pack(side=tk.LEFT)
+        
+        correction_var = tk.StringVar()
+        correction_entry = ttk.Entry(input_frame, textvariable=correction_var, width=20, font=("Arial", 10))
+        correction_entry.pack(side=tk.LEFT, padx=(10, 0))
+        correction_entry.focus_set()
+        
+        # Button frame
+        button_frame = ttk.Frame(dialog)
+        button_frame.pack(fill=tk.X, padx=20, pady=(10, 15))
+        
+        def on_confirm():
+            self.apply_manual_correction(correction_var, dialog)
+        
+        def on_cancel():
+            dialog.destroy()
+        
+        confirm_btn = ttk.Button(button_frame, text="Confirm", command=on_confirm, width=12)
+        confirm_btn.pack(side=tk.LEFT, expand=True)
+        
+        cancel_btn = ttk.Button(button_frame, text="Cancel", command=on_cancel, width=12)
+        cancel_btn.pack(side=tk.RIGHT, expand=True)
+        
+        # Bind Enter key to confirm and Escape key to cancel
+        dialog.bind('<Return>', lambda e: on_confirm())
+        dialog.bind('<Escape>', lambda e: on_cancel())
+    
+    def apply_manual_correction(self, correction_var, dialog):
+        """Apply manual correction to current image
+        
+        Args:
+            correction_var: StringVar containing user input
+            dialog: Toplevel dialog window to close after correction
+        """
+        import re
+        
+        # Get and validate user input
+        corrected_str = correction_var.get().strip()
+        
+        if not corrected_str:
+            messagebox.showwarning("Invalid Input", "Please enter a value.", parent=dialog)
+            return
+        
+        # Validate number format (allow integers, decimals, negative numbers)
+        pattern = r'^-?\d*\.?\d+$'
+        if not re.match(pattern, corrected_str):
+            messagebox.showwarning(
+                "Invalid Input",
+                "Please enter a valid number.\n(Allowed: integers, decimals, negative numbers)",
+                parent=dialog
+            )
+            return
+        
+        try:
+            corrected_float = float(corrected_str)
+        except ValueError:
+            messagebox.showwarning("Invalid Input", "Cannot convert to number.", parent=dialog)
+            return
+        
+        # Get current index
+        idx = self.current_image_index
+        
+        # Update data lists
+        self.readings[idx] = corrected_float
+        self.reading_strings[idx] = corrected_str
+        self.confidences[idx] = 1.0  # Set confidence to 100%
+        
+        # Close dialog
+        dialog.destroy()
+        
+        # Refresh UI
+        self.update_plot()  # Refresh scatter plot
+        self.show_current_image()  # Refresh preview image
+        
+        # Log the correction
+        unit = self.time_unit.get()
+        time_val = self.time_values[idx] if idx < len(self.time_values) else 0
+        self.log(
+            f"Manual correction applied: Frame {idx + 1}, "
+            f"Time={time_val:.2f} {unit}, Value={corrected_str} {self.reading_unit.get()}",
+            "info"
+        )
+    
     def export_to_excel(self):
         """Export the readings data to an Excel file"""
         if not self.readings or not self.time_values:
@@ -1206,6 +1614,106 @@ class DeviceReadingsAnalyzer:
         except Exception as e:
             self.log(f"Error exporting data: {str(e)}", "error")
             messagebox.showerror("Export Error", f"Error exporting data: {str(e)}")
+    
+    def export_to_train_data(self):
+        """
+        Export current batch processing results as training data for PaddleOCR
+        
+        Exports ROI-cropped images and corresponding labels in PaddleOCR format.
+        Output structure:
+            [export_dir]/
+            ├── train_images/
+            │   ├── img_00000.png
+            │   ├── img_00001.png
+            │   └── ...
+            └── rec_gt_train.txt
+        
+        Label file format (tab-separated):
+            train_images/img_00000.png\t-70.00
+            train_images/img_00001.png\t25.30
+        """
+        # Check preconditions
+        if not self.image_files:
+            messagebox.showwarning("No Images", "Please load an image sequence first.")
+            return
+        
+        if not self.roi_selected:
+            messagebox.showwarning("ROI Required", "Please select the reading area first.")
+            return
+        
+        if not self.readings or not self.reading_strings:
+            messagebox.showwarning("No Data", "No recognition results available. Please process images first.")
+            return
+        
+        # Ask user to select export directory
+        export_dir = filedialog.askdirectory(title="Select Export Directory for Training Data")
+        if not export_dir:
+            return
+        
+        # Create train_images subdirectory
+        images_dir = os.path.join(export_dir, "train_images")
+        os.makedirs(images_dir, exist_ok=True)
+        
+        # Prepare label file path
+        label_file_path = os.path.join(export_dir, "rec_gt_train.txt")
+        
+        # Statistics counters
+        exported_count = 0
+        skipped_count = 0
+        
+        self.log("Starting export to training data...", "info")
+        
+        try:
+            with open(label_file_path, 'w', encoding='utf-8') as label_file:
+                for i, img_file in enumerate(self.image_files):
+                    # Check if valid recognition result exists
+                    if i >= len(self.reading_strings) or self.reading_strings[i] is None or self.reading_strings[i] == "":
+                        skipped_count += 1
+                        continue
+                    
+                    # Read original image
+                    img_path = os.path.join(self.image_folder, img_file)
+                    img = cv2.imread(img_path)
+                    if img is None:
+                        skipped_count += 1
+                        self.log(f"Failed to read image: {img_file}", "warning")
+                        continue
+                    
+                    # Crop ROI region (original image, no preprocessing)
+                    roi = img[self.orig_roi_start_y:self.orig_roi_end_y,
+                              self.orig_roi_start_x:self.orig_roi_end_x]
+                    
+                    # Generate output filename
+                    output_filename = f"img_{exported_count:05d}.png"
+                    output_path = os.path.join(images_dir, output_filename)
+                    
+                    # Save ROI image
+                    cv2.imwrite(output_path, roi)
+                    
+                    # Write label (relative_path + Tab + label)
+                    relative_path = f"train_images/{output_filename}"
+                    label = self.reading_strings[i]
+                    label_file.write(f"{relative_path}\t{label}\n")
+                    
+                    exported_count += 1
+            
+            # Log completion statistics
+            self.log(f"Export completed! Exported: {exported_count} images, Skipped: {skipped_count} images", "info")
+            self.log(f"Images saved to: {images_dir}", "info")
+            self.log(f"Label file saved to: {label_file_path}", "info")
+            
+            # Show success message
+            messagebox.showinfo(
+                "Export Successful",
+                f"Training data exported successfully!\n\n"
+                f"Exported: {exported_count} images\n"
+                f"Skipped: {skipped_count} images\n\n"
+                f"Location: {export_dir}"
+            )
+            
+        except Exception as e:
+            self.log(f"Error exporting training data: {str(e)}", "error")
+            messagebox.showerror("Export Error", f"Error exporting training data: {str(e)}")
     
     def show_help_window(self):
         """Display help window with bilingual user guide"""

@@ -62,3 +62,5 @@ output/
 Thumbs.db
 .DS_Store
 
+#Cursor
+.cursor/

@@ -30,7 +30,9 @@ Device Number Reading 是一个专为工业设备数码显示读数设计的图�
 - 📊 **智能数据可视化**：实时绘制读数散点图，根据置信度动态标注颜色
 - 🎨 **置信度可视化**：不同置信度用不同颜色表示（绿色=高，橙色=中，红色=低，黑色=失败）
 - 🖱️ **交互式曲线图**：点击数据点即可跳转到对应图像帧
+- ✏️ **手动校正功能**：支持对识别结果进行手动修正（Ctrl+R 或双击图像）
 - 💾 **数据导出**：一键导出 Excel 格式数据（含置信度信息）
+- 🎓 **导出训练数据**：支持将识别结果导出为 PaddleOCR 训练数据格式（Ctrl+T）
 - 🖼️ **ROI 选择**：可视化感兴趣区域选择
 - 🚀 **批量处理**：支持图像序列批量识别
 
@@ -100,7 +102,7 @@ python Device_Reading_Analyzer.py
 ### 基本工作流程
 
 ```
-加载图像序列 → 选择ROI → 设置参数 → 处理图像 → 导出数据
+加载图像序列 → 选择ROI → 设置参数 → 处理图像 → 查看/校正 → 导出数据
 ```
 
 ### 详细步骤
@@ -176,11 +178,63 @@ python Device_Reading_Analyzer.py
   - 日志窗口显示跳转信息（帧号、时间、读数、置信度）
   - 注意：图像处理期间点击跳转功能被禁用
 
+#### 5️⃣.5 手动校正（新功能）
+
+当批量处理完成后，如果发现个别识别结果有误，可进行手动校正：
+
+**触发方式**：
+- **快捷键**：导航到需要校正的图像后，按 `Ctrl+R`
+- **双击**：直接双击预览窗口中的图像
+
+**校正流程**：
+1. 在弹出的对话框中输入正确的数值
+2. 点击 `Confirm` 或按 `Enter` 确认
+3. 点击 `Cancel` 或按 `Esc` 取消
+
+**校正效果**：
+- 散点图自动更新对应数据点
+- 预览窗口显示更新后的标注
+- 置信度自动设为 1.0（100%）
+- 导出 Excel 时使用校正后的值
+
 #### 6️⃣ 导出数据
 
 - 处理完成后，点击 **"Export to Excel"**
 - 选择保存位置和文件名
 - 数据包含：时间列、读数列、置信度列
+
+#### 7️⃣ 导出训练数据（新功能）
+
+将识别结果导出为 PaddleOCR 训练数据格式，便于后续模型微调：
+
+**触发方式**：
+- 点击 **File → Export to Train Data**
+- 或按 **Ctrl+T** 快捷键
+
+**导出内容**：
+- **图像文件**：ROI 区域裁剪后的原始图像（不含预处理）
+- **标签文件**：`rec_gt_train.txt`（Tab 分隔格式）
+
+**导出目录结构**：
+```
+导出目录/
+├── train_images/           # 图像目录
+│   ├── img_00000.png
+│   ├── img_00001.png
+│   └── ...
+└── rec_gt_train.txt        # 标签文件
+```
+
+**标签文件格式**：
+```
+train_images/img_00000.png	-70.00
+train_images/img_00001.png	25.30
+```
+
+**注意事项**：
+- 仅在批量处理完成后可用
+- 无效识别结果会被自动跳过
+- 手动校正后的结果会被正确导出
 
 ---
 
@@ -307,6 +361,7 @@ Device_Number_Reading/
 - **Pre-processing**：图像预处理选项
 - **Processing**：开始/停止处理、导出数据
 - **Interactive Chart**：置信度色彩编码的散点图，支持点击跳转到对应图像帧
+- **Manual Correction**：手动校正识别结果（Ctrl+R 或双击图像）
 
 ---
 
@@ -373,6 +428,40 @@ Device_Number_Reading/
 - 图像处理过程中点击跳转功能被禁用，防止线程冲突
 - 处理完成后即可使用交互功能
 - 导出的Excel文件包含完整的置信度列，便于后续分析
+
+### 手动校正功能
+
+当识别结果有误时，可使用手动校正功能进行修正：
+
+**触发方式**
+
+| 方式 | 操作 |
+|------|------|
+| 快捷键 | 导航到目标图像后按 `Ctrl+R` |
+| 双击 | 双击预览窗口中的图像 |
+
+**校正流程**
+
+1. 导航到需要校正的图像帧
+2. 使用上述任一方式打开校正对话框
+3. 输入正确的数值（支持整数、小数、负数）
+4. 确认后，程序自动更新：
+   - 数据列表中的读数值
+   - 散点图上对应的数据点位置
+   - 预览窗口中的标注显示
+   - 置信度设为 1.0（100%）
+
+**使用场景**
+
+- 修正个别识别错误的数值
+- 处理特殊情况（如数字被部分遮挡）
+- 快速补全识别失败的结果
+
+**注意事项**
+
+- 仅在批量处理完成后可用
+- 处理过程中无法进行手动校正
+- 校正后的值在导出 Excel 时会被采用
 
 ### 自定义预处理
 
@@ -569,8 +658,10 @@ Device Number Reading is an advanced image recognition and analysis system desig
 - 🚀 **Ready to Use**: Pre-trained model included, no download required (24MB)
 - 📦 **Lightweight**: 7x smaller than general models, faster inference
 - 🔧 **Flexible Configuration**: Multiple preprocessing options and adjustable parameters
+- ✏️ **Manual Correction**: Edit recognition results manually (Ctrl+R or double-click)
 - 📊 **Data Visualization**: Real-time reading curve plotting
 - 💾 **Data Export**: One-click Excel export
+- 🎓 **Training Data Export**: Export results as PaddleOCR training data format (Ctrl+T)
 - 🖼️ **ROI Selection**: Visual region of interest selection
 - 🚀 **Batch Processing**: Support for image sequence batch recognition
 
@@ -594,7 +685,9 @@ python Device_Reading_Analyzer.py
 2. Select ROI (Region of Interest)
 3. Configure parameters
 4. Process images
-5. Export to Excel
+5. Review & correct (Ctrl+R or double-click)
+6. Export to Excel
+7. Export training data (Ctrl+T, optional)
 
 ### 🔧 Technology Stack
 
