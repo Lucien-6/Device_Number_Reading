@@ -1,12 +1,12 @@
 """
 Digit Recognizer Module
 
-Handles digit recognition using PaddleOCR.
+Handles digit recognition using PaddleOCR v3.x with official PP-OCRv5 pretrained model.
 
 Author: Lucien
 Email: lucien-6@qq.com
 License: MIT License
-Date: 2025-11-13
+Date: 2025-12-26
 """
 
 import os
@@ -14,6 +14,10 @@ import cv2
 import numpy as np
 import re
 import tempfile
+import logging
+
+# Configure module logger
+logger = logging.getLogger(__name__)
 
 # Disable OneDNN/MKL-DNN to avoid compatibility issues
 # Must be set BEFORE importing PaddlePaddle/PaddleOCR
@@ -38,124 +42,109 @@ import paddle
 paddle.set_flags({'FLAGS_use_mkldnn': False})
 
 # NOW import PaddleOCR after flags are set
-from paddleocr import PaddleOCR
+from paddleocr import TextRecognition
 
 
 class DigitRecognizer:
-    """Recognizes digits using PaddleOCR"""
+    """Recognizes digits using PaddleOCR v3.x with official PP-OCRv5_server_rec pretrained model"""
+    
+    # Preprocessing constants
+    MIN_OCR_HEIGHT = 32  # Minimum height for OCR processing (pixels) - PaddleOCR recommended
+    COMPONENT_SPACING_WITH_CLOSING = 50  # Spacing between components when closing enabled (pixels)
+    COMPONENT_SPACING_DEFAULT = 20  # Default spacing between components (pixels)
+    
+    # Recognition constants
+    DEFAULT_CONFIDENCE_THRESHOLD = 0.5  # Default confidence threshold for digital displays
+    DEFAULT_CHAR_WHITELIST = '-0123456789. '  # Allowed characters for digit recognition
     
     def __init__(self):
         """
         Initialize digit recognizer with PaddleOCR
         """
         self.ocr = None
-        self.confidence_threshold = 0.3  # Lower threshold to see more results
-        self.char_whitelist = '-0123456789.'
+        self.confidence_threshold = self.DEFAULT_CONFIDENCE_THRESHOLD
+        self.char_whitelist = self.DEFAULT_CHAR_WHITELIST
         self._initialized = False
         self.closing_size = 0  # Closing operation kernel size (0 = disabled)
         self.last_confidence = 0.0  # Store last recognition confidence
     
     def _lazy_init_ocr(self):
         r"""
-        Lazy initialization of PaddleOCR with SVTR_Tiny Digital Model
+        Lazy initialization of PaddleOCR v3.x TextRecognition with PP-OCRv5 Official Model
         
-        Uses custom-trained SVTR_Tiny model specifically optimized for digital display recognition:
-        - Trained on digital display/LED segment datasets
-        - Lightweight architecture (~24MB model size)
-        - High accuracy for digit recognition (0-9, minus sign, decimal point)
-        - Faster inference compared to general-purpose models
+        Uses official pretrained PP-OCRv5_server_rec model from PaddleOCR:
+        - Pretrained by PaddleOCR official team (no training required)
+        - Server-level model optimized for high accuracy
+        - Supports Chinese and English text recognition
+        - CPU-friendly inference for production deployment
         
-        Model Files (located in ./svtr_tiny_digital/):
-        - best_accuracy.pdparams: Model weights (~24MB)
-        - config.yml: Model configuration
+        Model Files (located in ./PP-OCRv5_server_rec/):
+        - inference.json: Model structure (Inference format)
+        - inference.pdiparams: Model weights
+        - inference.yml: Model configuration
         
-        Custom Dictionary (./digital_dict.txt):
-        - Contains only: 0-9, minus sign (-), decimal point (.)
-        - Reduces confusion and improves accuracy
+        Character Filtering:
+        - Uses model's built-in dictionary (supports full Chinese/English)
+        - Application-level whitelist filtering: 0-9, minus sign (-), decimal point (.), space
+        - Whitelist reduces false positives for digit-only scenarios
         
         Model Architecture:
-        - Algorithm: SVTR (Scene Text Recognition with a Single Visual Model)
-        - Input shape: 3 x 64 x 256 (H x W)
-        - Decoder: CTC (Connectionist Temporal Classification)
-        - Transform: STN (Spatial Transformer Network) for perspective correction
+        - PP-OCRv5: Latest version of PaddleOCR recognition model
+        - High accuracy and robust performance
+        - Optimized for various text scenarios
         
-        Reference:
-        https://www.paddleocr.ai/v2.9.1/applications/%E5%85%89%E5%8A%9F%E7%8E%87%E8%AE%A1%E6%95%B0%E7%A0%81%E7%AE%A1%E5%AD%97%E7%AC%A6%E8%AF%86%E5%88%AB.html
+        Reference (v3.x API):
+        https://www.paddleocr.ai/main/version3.x/module_usage/text_recognition.html
+        
+        Model Download:
+        https://paddleocr.bj.bcebos.com/PP-OCRv5/chinese/PP-OCRv5_server_rec.tar
         """
         if not self._initialized:
-            # Check if SVTR_Tiny Inference model files exist
-            model_dir = './svtr_tiny_digital'
+            # Check if PP-OCRv5 official pretrained model files exist
+            model_dir = './PP-OCRv5_server_rec'
             
-            # Prefer Inference model over training model for better performance
-            inference_model = os.path.join(model_dir, 'inference.pdmodel')
+            # Check if official PP-OCRv5 Inference model files exist
             inference_params = os.path.join(model_dir, 'inference.pdiparams')
-            training_model = os.path.join(model_dir, 'best_accuracy.pdparams')
-            dict_file = './digital_dict.txt'
             
-            # Check which model is available
-            use_inference_model = os.path.exists(inference_model) and os.path.exists(inference_params)
-            use_training_model = os.path.exists(training_model)
-            
-            if not use_inference_model and not use_training_model:
+            if not os.path.exists(model_dir):
                 raise FileNotFoundError(
-                    f"SVTR_Tiny model files not found in: {model_dir}\n"
-                    f"Expected either:\n"
-                    f"  - Inference model: inference.pdmodel + inference.pdiparams (recommended)\n"
-                    f"  - Training model: best_accuracy.pdparams\n"
-                    f"Please ensure the model files are present or refer to MODEL_TRAINING_GUIDE.md"
+                    f"PP-OCRv5 model directory not found: {model_dir}\n"
+                    f"Please download the official PP-OCRv5_server_rec model from:\n"
+                    f"https://paddleocr.bj.bcebos.com/PP-OCRv5/chinese/PP-OCRv5_server_rec.tar"
                 )
             
-            if not os.path.exists(dict_file):
+            if not os.path.exists(inference_params):
                 raise FileNotFoundError(
-                    f"Dictionary file not found: {dict_file}\n"
-                    f"Please ensure the digital_dict.txt file exists in the project root."
+                    f"PP-OCRv5 model files not found in: {model_dir}\n"
+                    f"Expected Inference model files: inference.pdiparams + inference.json\n"
+                    f"Please download the official model or check the model directory."
                 )
             
-            # Determine which model to use
-            if use_inference_model:
-                model_type = "Inference model (optimized for deployment)"
-                print(f"[INFO] Loading SVTR_Tiny Inference model from: {model_dir}")
-                print(f"[INFO] Model files: inference.pdmodel + inference.pdiparams")
-            else:
-                model_type = "Training model (will be slower)"
-                print(f"[INFO] Loading SVTR_Tiny training model from: {model_dir}")
-                print(f"[INFO] Model file: best_accuracy.pdparams")
-                print(f"[WARNING] Consider converting to Inference model for better performance")
-            
-            print(f"[INFO] Model type: {model_type}")
-            print(f"[INFO] Model size: ~24 MB")
-            print(f"[INFO] Custom dictionary: {dict_file} (0-9, -, .)")
+            logger.info(f"Loading PP-OCRv5 official pretrained model from: {model_dir}")
+            logger.info(f"Model files: inference.pdiparams + inference.json")
+            logger.info(f"Model: PP-OCRv5_server_rec (official pretrained, no training required)")
+            logger.info(f"Using model's built-in dictionary (character filtering via whitelist)")
             
             # Initialize PaddleOCR with Inference model
-            # API Reference from official documentation:
-            # https://www.paddleocr.ai/v2.9.1/applications/%E5%85%89%E5%8A%9F%E7%8E%87%E8%AE%A1%E6%95%B0%E7%A0%81%E7%AE%A1%E5%AD%97%E7%AC%A6%E8%AF%86%E5%88%AB.html
-            # https://aistudio.baidu.com/projectdetail/4049044
-            #
-            # Correct usage for Inference model:
-            # ocr = PaddleOCR(rec_model_dir='digital_infer', rec_char_dict_path='digital_dict.txt')
-            # result = ocr.ocr('image.jpg', det=False)
-            # text, confidence = result[0][0]  # Output: ('-70.00', 0.9998)
             
-            print("[INFO] Initializing PaddleOCR with SVTR_Tiny Inference model...")
-            self.ocr = PaddleOCR(
-                # Core parameters for Inference model
-                rec_model_dir=model_dir,              # Path to Inference model directory
-                # NOTE: Do NOT specify rec_char_dict_path - let model use its internal dictionary
-                # The model was trained with a specific dictionary embedded in it
+            logger.info("Initializing PaddleOCR v3.x TextRecognition with PP-OCRv5_server_rec model...")
+            self.ocr = TextRecognition(
+                # Core parameters for Inference model (v3.x API)
+                model_dir=model_dir,                  # Path to PP-OCRv5 official model directory
                 
-                # Optional: Use GPU for faster inference (set to False if encountering issues)
-                use_gpu=False,                        # Use CPU for maximum compatibility
+                # Device selection (v3.x: use_gpu=False -> device="cpu")
+                device="cpu",                         # Use CPU for maximum compatibility
                 
-                # Suppress verbose logging
-                show_log=False,
+                # Note: Model uses built-in dictionary (full Chinese/English support)
+                # Character filtering is done at application level via whitelist
             )
-            print("[INFO] PaddleOCR initialized successfully")
-            print("[INFO] Using model's internal dictionary (trained with specific character set)")
-            print("[INFO] Using CPU inference for maximum compatibility")
+            logger.info("PaddleOCR v3.x TextRecognition initialized successfully")
+            logger.info("Using official PP-OCRv5_server_rec pretrained model")
+            logger.info("Using CPU inference for maximum compatibility")
             
             self._initialized = True
-            print("[INFO] SVTR_Tiny digital recognition model initialized successfully!")
-            print("[INFO] Ready for high-accuracy digit recognition")
+            logger.info("PP-OCRv5_server_rec model initialized successfully!")
+            logger.info("Ready for high-accuracy text recognition (no training required)")
     
     def set_confidence_threshold(self, threshold):
         """
@@ -194,11 +183,14 @@ class DigitRecognizer:
         # Grayscale/binary image processing
         # Expand horizontal spacing between components only if closing is enabled
         if self.closing_size > 0:
-            thresh_img = self._expand_component_spacing(thresh_img, spacing=50)
+            thresh_img = self._expand_component_spacing(
+                thresh_img, 
+                spacing=self.COMPONENT_SPACING_WITH_CLOSING
+            )
         
-        # Resize image to improve OCR accuracy (height should be at least 32 pixels)
+        # Resize image to improve OCR accuracy (height should be at least MIN_OCR_HEIGHT pixels)
         h, w = thresh_img.shape
-        scale_factor = max(1.0, 32.0 / h)
+        scale_factor = max(1.0, self.MIN_OCR_HEIGHT / h)
         
         if scale_factor > 1:
             new_w = int(w * scale_factor)
@@ -207,7 +199,7 @@ class DigitRecognizer:
         
         return thresh_img
     
-    def _expand_component_spacing(self, image, spacing=20):
+    def _expand_component_spacing(self, image, spacing=None):
         """
         Expand horizontal spacing between connected components
         (Keep existing implementation unchanged)
@@ -220,7 +212,7 @@ class DigitRecognizer:
         Args:
             image: Binary image (white digits on black background)
             spacing: Number of pixels to insert between components 
-                (default: 20)
+                (default: COMPONENT_SPACING_DEFAULT)
         
         Returns:
             numpy.ndarray: Image with expanded component spacing
@@ -230,6 +222,8 @@ class DigitRecognizer:
             - Components are sorted by horizontal position (x-coordinate)
             - Black background (0) is inserted as spacing
         """
+        if spacing is None:
+            spacing = self.COMPONENT_SPACING_DEFAULT
         # Find connected components
         num_labels, labels, stats, centroids = \
             cv2.connectedComponentsWithStats(image, connectivity=8)
@@ -296,7 +290,7 @@ class DigitRecognizer:
     
     def recognize(self, thresh_img, original_roi=None, log_callback=None, result_img_path=None):
         """
-        Recognize digits from preprocessed image using PaddleOCR SVTR_Tiny Model
+        Recognize digits from preprocessed image using PaddleOCR v3.x TextRecognition with PP-OCRv5 Model
         
         Args:
             thresh_img: Preprocessed binary image or original ROI image (BGR)
@@ -337,36 +331,54 @@ class DigitRecognizer:
                 cv2.imwrite(temp_path, ocr_img_rgb)
             
             try:
-                # Perform OCR using SVTR_Tiny Inference model
-                # Official API usage (from PaddleOCR documentation):
-                # result = ocr.ocr('image.jpg', det=False)
-                # text, confidence = result[0][0]  # Output: ('-70.00', 0.9998)
+                # Perform OCR using PP-OCRv5 official model with v3.x API
+                # Official API usage (from PaddleOCR v3.x documentation):
+                # https://www.paddleocr.ai/main/version3.x/module_usage/text_recognition.html
+                # result = model.predict(input='image.jpg', batch_size=1)
+                # for res in result:
+                #     text = res['rec_text']
+                #     confidence = res['rec_score']
                 #
-                # det=False: Only recognition, no text detection (input is already cropped ROI)
-                # cls=False: No angle classification (not needed for horizontal digits)
-                result = self.ocr.ocr(temp_path, det=False, cls=False)
+                # v3.x TextRecognition is recognition-only by default (no detection or classification)
+                result = self.ocr.predict(input=temp_path, batch_size=1)
                 
-                # Parse result according to official format
-                # Expected format: [[('text', confidence), ...]] or [('text', confidence)]
-                log(f"Raw OCR result: {result}", "info")
+                # Parse result according to v3.x official format
+                # Expected format: [ResultObject, ...]
+                # Each ResultObject is dict-like with keys: 'rec_text', 'rec_score', etc.
                 
                 if not result:
                     log("PaddleOCR returned None (no text detected)", "warning")
                     return None
                 
-                # Extract recognition results according to official API
-                # Format: result[0][0] = (text, confidence)
+                # Log only key fields (rec_text and rec_score) for readability
+                simplified_results = [
+                    {'rec_text': r.get('rec_text', ''), 'rec_score': r.get('rec_score', 0.0)}
+                    for r in result if isinstance(r, dict)
+                ]
+                log(f"OCR result: {simplified_results}", "info")
+                
+                # Extract recognition results according to v3.x API
+                # Format: result[i] = {'rec_text': 'text', 'rec_score': confidence, ...}
                 try:
-                    if isinstance(result[0], list) and len(result[0]) > 0:
-                        # Standard format: [[('text', conf)]]
-                        all_detections = result[0]
-                    elif isinstance(result[0], tuple):
-                        # Simplified format: [('text', conf)]
-                        all_detections = result
-                    else:
-                        log(f"Unexpected result structure: {type(result[0])}", "warning")
+                    # v3.x returns a list of ResultObject instances
+                    if not isinstance(result, list) or len(result) == 0:
+                        log(f"Unexpected result structure: {type(result)}", "warning")
                         return None
-                except (IndexError, TypeError) as e:
+                    
+                    # Convert v3.x TextRecResult format to internal format
+                    # TextRecResult objects are dict-like, directly access keys
+                    all_detections = []
+                    for res_obj in result:
+                        # Access result attributes from TextRecResult (dict-like object)
+                        if isinstance(res_obj, dict):
+                            text = res_obj.get('rec_text', '')
+                            score = res_obj.get('rec_score', 0.0)
+                            all_detections.append((text, score))
+                        else:
+                            log(f"Unexpected result structure: {type(res_obj)}", "warning")
+                            continue
+                            
+                except (AttributeError, KeyError, TypeError) as e:
                     log(f"Error parsing result: {e}", "error")
                     return None
                 
@@ -472,8 +484,10 @@ class DigitRecognizer:
                 # Validate result format
                 if best_text:
                     if self._validate_number_format(best_text):
-                        log(f"Valid number format detected: '{best_text}' (confidence: {best_confidence:.3f})", "info")
-                        return best_text
+                        # Remove spaces for numeric processing
+                        best_text_clean = best_text.replace(' ', '')
+                        log(f"Valid number format detected: '{best_text_clean}' (confidence: {best_confidence:.3f})", "info")
+                        return best_text_clean
                     else:
                         log(f"Text '{best_text}' does not match number format pattern (allowed: digits, minus sign, decimal point)", "warning")
                         return None
@@ -485,18 +499,39 @@ class DigitRecognizer:
                     return None
                     
             finally:
-                # Clean up temporary file
-                try:
-                    os.unlink(temp_path)
-                except:
-                    pass
+                # Clean up temporary file with proper error handling
+                if 'temp_path' in locals() and os.path.exists(temp_path):
+                    try:
+                        os.unlink(temp_path)
+                    except PermissionError:
+                        log(f"Failed to delete temporary file (permission denied): {temp_path}", "warning")
+                    except OSError as e:
+                        log(f"Failed to delete temporary file (OS error): {temp_path} - {str(e)}", "warning")
                 
-        except Exception as e:
-            # Log error but don't print stack trace in production
-            error_msg = f"Recognition failed with exception: {type(e).__name__}: {str(e)}"
+        except FileNotFoundError as e:
+            error_msg = f"Model file not found: {str(e)}"
             log(error_msg, "error")
-            print(f"[ERROR] {error_msg}")
-            self.last_confidence = 0.0  # Reset confidence on error
+            logger.error(error_msg)
+            self.last_confidence = 0.0
+            return None
+        except ValueError as e:
+            error_msg = f"Invalid parameter or data: {str(e)}"
+            log(error_msg, "error")
+            logger.error(error_msg)
+            self.last_confidence = 0.0
+            return None
+        except RuntimeError as e:
+            error_msg = f"Runtime error during recognition: {str(e)}"
+            log(error_msg, "error")
+            logger.error(error_msg)
+            self.last_confidence = 0.0
+            return None
+        except Exception as e:
+            # Catch-all for unexpected errors
+            error_msg = f"Unexpected error during recognition: {type(e).__name__}: {str(e)}"
+            log(error_msg, "error")
+            logger.error(error_msg)
+            self.last_confidence = 0.0
             return None
     
     def _filter_text(self, text):
@@ -519,16 +554,24 @@ class DigitRecognizer:
     def _validate_number_format(self, text):
         """
         Validate if recognized text is a valid number format
+        Supports spaces in numbers (e.g., "1 234.56") which will be removed for numeric conversion
         
         Args:
-            text: Recognized text string
+            text: Recognized text string (may contain spaces)
         
         Returns:
-            bool: True if valid number format
+            bool: True if valid number format (after removing spaces)
         """
         if not text:
             return False
         
+        # Remove spaces for validation
+        text_no_space = text.replace(' ', '')
+        
+        if not text_no_space:
+            return False
+        
         # Allow formats: "123", "-123", "12.34", "-12.34", ".5", "-.5"
+        # Spaces in original text are acceptable and will be removed
         pattern = r'^-?\d*\.?\d+$'
-        return bool(re.match(pattern, text))
+        return bool(re.match(pattern, text_no_space))

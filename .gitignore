@@ -49,7 +49,7 @@ venv.bak/
 .venv
 
 # Project specific
-test_images/
+train_data/
 output/
 *.xlsx
 *.xls

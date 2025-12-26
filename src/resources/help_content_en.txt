@@ -5,16 +5,16 @@
 【Introduction】
 
 This is a professional tool for recognizing digital readings from 
-device displays. Using computer vision and PaddleOCR SVTR_Tiny custom 
-model technology, it can automatically recognize numeric readings from 
+device displays. Using computer vision and PaddleOCR v3.x official 
+PP-OCRv5 pretrained model technology, it can automatically recognize numeric readings from 
 7-segment displays and export results to Excel spreadsheets. Suitable for 
 laboratory data collection, industrial equipment monitoring, historical 
 data recovery, and more.
 
 Key Features:
 • Batch image processing support
-• Intelligent recognition based on SVTR_Tiny digital-specific model (24MB, inference model preferred)
-• No external installation, model included in project, ready to use
+• Based on PP-OCRv5 official pretrained model (no training required, ready to use)
+• Uses PaddleOCR official server-level model, stable and reliable performance
 • Support for negative numbers and decimal points
 • Support for decimal position adjustment (Keep/None/0.1/0.01/0.001/0.0001)
 • Smart data visualization: dynamic color-coded scatter plot based on confidence
@@ -188,10 +188,26 @@ colors representing recognition confidence:
    • Reading value (e.g., 25.3 °C)
    • Confidence (e.g., 0.876)
 
+【Chart Zoom Features】
+
+• Mouse Wheel Zoom
+  - Scroll mouse wheel on scatter plot to zoom in or out
+  - Scroll up: Zoom In
+  - Scroll down: Zoom Out
+  
+• Double-click Reset
+  - Double-click anywhere on scatter plot to reset zoom to original view
+  - Quickly restore full data view
+  
+• Drag to Pan
+  - After zooming, left-click and drag to pan chart to view different areas
+  - Convenient for viewing local details
+
 Usage Suggestions:
 • Quick QC: Click red or black points to quickly locate problem images
 • Data validation: Click orange points for spot-checking
 • Trend analysis: Observe color distribution to understand overall quality
+• Local viewing: Use wheel to zoom in on areas of interest, drag to view details
 
 Notes:
 • Interactive jumping disabled during image processing
@@ -251,20 +267,20 @@ Method 2: Keyboard Shortcut
 
 1. Image Files
    • Only exports ROI-cropped original images (without preprocessing)
-   • Naming format: img_00000.png, img_00001.png, ...
+   • Naming format: img_00000.jpg, img_00001.jpg, ...
    • Saved in train_images subdirectory
 
 2. Label File
    • Filename: rec_gt_train.txt
    • Format: relative_image_path + Tab + label
-   • Example: train_images/img_00000.png	-70.00
+   • Example: train_images/img_00000.jpg	-70.00
 
 【Export Directory Structure】
 
 Selected_Export_Directory/
 ├── train_images/           # Image directory
-│   ├── img_00000.png
-│   ├── img_00001.png
+│   ├── img_00000.jpg
+│   ├── img_00001.jpg
 │   └── ...
 └── rec_gt_train.txt        # Label file
 
@@ -388,9 +404,9 @@ A4: Use Decimal Position feature to adjust:
       • Convert integer to decimal (select target precision)
 
 
-Q5: SVTR_Tiny recognition failed, what to do?
+Q5: Recognition failed or low accuracy, what to do?
 
-A5: When SVTR_Tiny recognition fails:
+A5: When recognition fails or accuracy is low:
    1. Check image quality
       • Ensure digits are clear and complete
       • Resolution high enough (recommend ROI height >32 pixels)
@@ -409,10 +425,10 @@ A5: When SVTR_Tiny recognition fails:
       • Keep stable, avoid motion blur
    
    5. Check model files
-      • Ensure ./svtr_tiny_digital/ directory exists
-      • Check for inference.pdmodel and inference.pdiparams files
-      • Or best_accuracy.pdparams file
-      • Program automatically prefers inference model (faster)
+      • Ensure ./PP-OCRv5_server_rec/ directory exists
+      • Check for inference.pdiparams, inference.json, inference.yml files
+      • If missing, download from official source:
+        https://paddleocr.bj.bcebos.com/PP-OCRv5/chinese/PP-OCRv5_server_rec.tar
 
 
 Q6: How to improve processing speed?
@@ -470,6 +486,67 @@ A8:
 
 
 ═══════════════════════════════════════════════════════════════
+【Keyboard Shortcuts Quick Reference】
+═══════════════════════════════════════════════════════════════
+
+┌─────────────────────┬────────────────────────────────┐
+│ Shortcut            │ Function                        │
+├─────────────────────┼────────────────────────────────┤
+│ Ctrl+L              │ Load Image Sequence             │
+├─────────────────────┼────────────────────────────────┤
+│ Ctrl+E              │ Export to Excel                 │
+├─────────────────────┼────────────────────────────────┤
+│ Ctrl+T              │ Export Training Data            │
+├─────────────────────┼────────────────────────────────┤
+│ Ctrl+R              │ Manual Correction (Current)     │
+├─────────────────────┼────────────────────────────────┤
+│ Ctrl+Z              │ Clear ROI Selection             │
+├─────────────────────┼────────────────────────────────┤
+│ Ctrl+Enter          │ Start Processing Images         │
+├─────────────────────┼────────────────────────────────┤
+│ D                   │ Previous Image                  │
+├─────────────────────┼────────────────────────────────┤
+│ F                   │ Next Image                      │
+├─────────────────────┼────────────────────────────────┤
+│ Esc                 │ Cancel/Close Dialog             │
+└─────────────────────┴────────────────────────────────┘
+
+
+═══════════════════════════════════════════════════════════════
+【Mouse Interaction Features】
+═══════════════════════════════════════════════════════════════
+
+【Image Preview Area】
+
+• Left-click and Drag
+  - Hold left button and drag on image to select ROI area
+  - Release mouse to complete selection, green border appears
+  
+• Double-click Image
+  - After batch processing completes, double-click image to open manual correction dialog
+  - Directly edit current image recognition result
+
+【Scatter Plot Area】
+
+• Click Data Point
+  - Click any data point on scatter plot to jump to corresponding image frame
+  - Image preview and slider automatically synchronize
+  
+• Mouse Wheel Zoom
+  - Scroll mouse wheel on scatter plot to zoom in or out
+  - Scroll up: Zoom In
+  - Scroll down: Zoom Out
+  
+• Double-click Reset
+  - Double-click anywhere on scatter plot to reset zoom to original view
+  - Quickly restore full data view
+  
+• Drag to Pan
+  - After zooming, left-click and drag to pan chart to view different areas
+  - Convenient for viewing local details
+
+
+═══════════════════════════════════════════════════════════════
 【Parameter Quick Reference】
 ═══════════════════════════════════════════════════════════════
 
@@ -479,7 +556,7 @@ A8:
 │ Standard            │ • Erosion Size: 0               │
 │ Recognition         │ • Closing Size: 0               │
 │ (Good quality)      │ • Decimal Position: Keep        │
-│                     │ • Compact ROI, SVTR_Tiny model  │
+│                     │ • Compact ROI, PP-OCRv5 model   │
 ├─────────────────────┼────────────────────────────────┤
 │ Low Quality         │ • Erosion Size: 2               │
 │ Images              │ • Closing Size: 5               │
@@ -535,15 +612,15 @@ This program uses computer vision and PaddleOCR technology to recognize
    • Optional: Closing operation (rectangular kernel, protects decimal point)
    • Size adjustment: Ensure image size suitable for OCR recognition
 
-2. SVTR_Tiny Digital-Specific Recognition
-   • Deep learning model: SVTR_Tiny custom-trained for digital displays
-   • Inference model preferred: inference.pdmodel + inference.pdiparams (24MB, faster)
-   • Training model backup: best_accuracy.pdparams (backup support)
-   • Custom dictionary: Only contains 0-9, -, . (12 characters total)
-   • Character whitelist: Only recognize "-0123456789."
-   • Confidence filtering: Automatically filter low confidence results
-   • Intelligent text recognition: Automatically detect and recognize digits
-   • Model management: Model included in project (./svtr_tiny_digital/), ready to use
+2. PP-OCRv5 Official Pretrained Model Recognition
+   • Deep learning model: PaddleOCR official PP-OCRv5_server_rec pretrained model
+   • Inference format: Inference format (inference.pdiparams + inference.json + inference.yml)
+   • API version: PaddleOCR v3.x TextRecognition module
+   • Built-in dictionary: Full Chinese and English character support
+   • Application-level whitelist: Only keep "-0123456789. " (including space)
+   • Confidence filtering: Default threshold 0.5, automatically filter low confidence results
+   • Space handling: Support space recognition, automatically removed during numeric processing
+   • Model management: Uses official pretrained model (./PP-OCRv5_server_rec/), no training required
 
 3. Result Validation
    • Format checking: Verify compliance with numeric format
@@ -585,8 +662,8 @@ This program uses computer vision and PaddleOCR technology to recognize
 ═══════════════════════════════════════════════════════════════
 
 Program Name: Device Readings Analyzer
-Version: 5.0.0
-Development Date: 2025-12-25
+Version: 5.1.0
+Development Date: 2025-12-26
 
 Author: Lucien
 Email: lucien-6@qq.com

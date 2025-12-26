@@ -22,6 +22,7 @@ import time
 import threading
 import tempfile
 import numpy as np
+from src import __version__
 from src.core.image_processor import ImageProcessor
 from src.core.digit_recognizer import DigitRecognizer
 
@@ -66,7 +67,7 @@ class DeviceReadingsAnalyzer:
         self.decimal_position = tk.StringVar(value="Keep")
         
         # Application metadata
-        self.version = "5.0.0"
+        self.version = __version__
         self.author = "Lucien"
         self.email = "lucien-6@qq.com"
         self.license = "MIT License"
@@ -76,6 +77,15 @@ class DeviceReadingsAnalyzer:
         
         # Scatter plot reference for pick events
         self.scatter_plot = None
+        self.failed_scatter_plot = None
+        
+        # Index mappings for scatter plot pick events
+        self.success_point_indices = []
+        self.failed_point_indices = []
+        
+        # Store original axis limits for zoom reset
+        self.plot_xlim_original = None
+        self.plot_ylim_original = None
         
         # Create the main UI
         self.create_ui()
@@ -243,6 +253,12 @@ class DeviceReadingsAnalyzer:
         
         # Bind pick event for data point clicking
         self.canvas_plot.mpl_connect('pick_event', self.on_plot_pick)
+        
+        # Bind scroll event for zooming with mouse wheel
+        self.canvas_plot.mpl_connect('scroll_event', self.on_scroll_zoom)
+        
+        # Bind double-click event for resetting zoom
+        self.canvas_plot.mpl_connect('button_press_event', self.on_plot_double_click)
         
         # Create log panel
         log_frame = ttk.LabelFrame(results_frame, text="Log", width=400)
@@ -969,7 +985,7 @@ class DeviceReadingsAnalyzer:
                 thresh = self.image_processor.preprocess_roi(roi)
 
                 try:
-                    # Recognize using PaddleOCR SVTR_Tiny with detailed logging
+                    # Recognize using PaddleOCR PP-OCRv5 official model with detailed logging
                     def recognition_log(message, level='info'):
                         """Log recognition details with image index"""
                         self.log(f"Image {i+1}: {message}", level)
@@ -1194,7 +1210,7 @@ class DeviceReadingsAnalyzer:
             try:
                 if os.path.exists(temp_result_img_path):
                     os.unlink(temp_result_img_path)
-            except:
+            except Exception:
                 pass
             
             # Convert to PIL RGB for canvas display
@@ -1320,6 +1336,8 @@ class DeviceReadingsAnalyzer:
         """Update plot (called in main thread)"""
         try:
             self.plot.clear()
+            self.success_point_indices = []
+            self.failed_point_indices = []
             if self.time_values and self.readings and self.confidences:
                 # Ensure all lists have the same length
                 data_length = min(len(self.time_values), len(self.readings), len(self.confidences))
@@ -1349,6 +1367,7 @@ class DeviceReadingsAnalyzer:
                         # Successful recognition
                         success_times.append(t)
                         success_readings.append(r)
+                        self.success_point_indices.append(i)
                         # Assign color based on confidence
                         if conf < 0.75:
                             success_colors.append('red')
@@ -1386,6 +1405,9 @@ class DeviceReadingsAnalyzer:
                     
                     failed_readings.append(interp_val)
                 
+                # Store failed point indices for pick events
+                self.failed_point_indices = failed_indices
+                
                 # Draw successful points (circles)
                 if success_times:
                     self.scatter_plot = self.plot.scatter(
@@ -1402,7 +1424,7 @@ class DeviceReadingsAnalyzer:
                 
                 # Draw failed points (triangles, black color)
                 if failed_times:
-                    self.plot.scatter(
+                    self.failed_scatter_plot = self.plot.scatter(
                         failed_times,
                         failed_readings,
                         c='black',
@@ -1411,6 +1433,8 @@ class DeviceReadingsAnalyzer:
                         picker=True,
                         pickradius=5
                     )
+                else:
+                    self.failed_scatter_plot = None
                 
                 # Set axis labels and grid
                 unit = self.time_unit.get()
@@ -1419,14 +1443,24 @@ class DeviceReadingsAnalyzer:
                 self.plot.grid(True)
                 self.figure.tight_layout()
                 self.canvas_plot.draw()
+                
+                # Store original axis limits for zoom reset
+                self.plot_xlim_original = self.plot.get_xlim()
+                self.plot_ylim_original = self.plot.get_ylim()
         except Exception as e:
             self.log(f"Error updating plot: {str(e)}", "error")
     
     def on_plot_pick(self, event):
         """Handle pick event when user clicks on a data point in the plot"""
         try:
-            # Check if the picked artist is our scatter plot
-            if self.scatter_plot is None or event.artist != self.scatter_plot:
+            # Determine which scatter plot was clicked
+            is_success_point = (self.scatter_plot is not None and 
+                               event.artist == self.scatter_plot)
+            is_failed_point = (self.failed_scatter_plot is not None and 
+                              event.artist == self.failed_scatter_plot)
+            
+            # Return if neither scatter plot was clicked
+            if not is_success_point and not is_failed_point:
                 return
             
             # Check if image processing is currently running (disable jumping during processing)
@@ -1439,20 +1473,131 @@ class DeviceReadingsAnalyzer:
                 self.log("No image files loaded", "warning")
                 return
             
-            # Get the index of the clicked data point
+            # Get the index of the clicked data point in the scatter array
             # event.ind is an array of indices, take the first one
-            ind = event.ind[0]
+            scatter_ind = event.ind[0]
             
-            # Boundary check
-            if ind < 0 or ind >= len(self.image_files):
-                self.log(f"Invalid frame index: {ind}", "error")
+            # Map scatter index to real frame index
+            if is_success_point:
+                # Boundary check for success point indices
+                if scatter_ind < 0 or scatter_ind >= len(self.success_point_indices):
+                    self.log(f"Invalid success point index: {scatter_ind}", "error")
+                    return
+                real_frame_index = self.success_point_indices[scatter_ind]
+            else:
+                # Boundary check for failed point indices
+                if scatter_ind < 0 or scatter_ind >= len(self.failed_point_indices):
+                    self.log(f"Invalid failed point index: {scatter_ind}", "error")
+                    return
+                real_frame_index = self.failed_point_indices[scatter_ind]
+            
+            # Final boundary check against image files
+            if real_frame_index < 0 or real_frame_index >= len(self.image_files):
+                self.log(f"Invalid frame index: {real_frame_index}", "error")
                 return
             
             # Jump to the corresponding frame
-            self.jump_to_frame(ind)
+            self.jump_to_frame(real_frame_index)
             
         except Exception as e:
             self.log(f"Error handling plot pick event: {str(e)}", "error")
+    
+    def on_scroll_zoom(self, event):
+        """Handle scroll event for zooming the scatter plot
+        
+        Zoom in/out centered on the mouse cursor position.
+        Scroll up to zoom in, scroll down to zoom out.
+        
+        Args:
+            event: Matplotlib scroll event
+        """
+        try:
+            # Check if mouse is inside the plot area
+            if event.inaxes != self.plot:
+                return
+            
+            # Get current axis limits
+            xlim = self.plot.get_xlim()
+            ylim = self.plot.get_ylim()
+            
+            # Store original limits if not already stored
+            if self.plot_xlim_original is None:
+                self.plot_xlim_original = xlim
+            if self.plot_ylim_original is None:
+                self.plot_ylim_original = ylim
+            
+            # Get mouse position in data coordinates
+            xdata = event.xdata
+            ydata = event.ydata
+            
+            if xdata is None or ydata is None:
+                return
+            
+            # Define zoom factor
+            zoom_factor = 0.8  # Zoom in factor (smaller = more zoom)
+            
+            if event.button == 'up':
+                # Scroll up: zoom in
+                scale_factor = zoom_factor
+            elif event.button == 'down':
+                # Scroll down: zoom out
+                scale_factor = 1.0 / zoom_factor
+            else:
+                return
+            
+            # Calculate new axis limits centered on mouse position
+            # Current range
+            x_range = xlim[1] - xlim[0]
+            y_range = ylim[1] - ylim[0]
+            
+            # New range after scaling
+            new_x_range = x_range * scale_factor
+            new_y_range = y_range * scale_factor
+            
+            # Calculate relative position of mouse within current range
+            x_rel = (xdata - xlim[0]) / x_range
+            y_rel = (ydata - ylim[0]) / y_range
+            
+            # Calculate new limits keeping mouse position fixed
+            new_xlim = (xdata - x_rel * new_x_range,
+                        xdata + (1 - x_rel) * new_x_range)
+            new_ylim = (ydata - y_rel * new_y_range,
+                        ydata + (1 - y_rel) * new_y_range)
+            
+            # Apply new limits
+            self.plot.set_xlim(new_xlim)
+            self.plot.set_ylim(new_ylim)
+            
+            # Redraw the canvas
+            self.canvas_plot.draw_idle()
+            
+        except Exception as e:
+            self.log(f"Error during scroll zoom: {str(e)}", "error")
+    
+    def on_plot_double_click(self, event):
+        """Handle double-click event to reset plot zoom
+        
+        Double-click on the scatter plot to reset to original view.
+        
+        Args:
+            event: Matplotlib button press event
+        """
+        try:
+            # Check if it's a double-click
+            if event.dblclick and event.inaxes == self.plot:
+                # Reset to original limits if available
+                if (self.plot_xlim_original is not None and 
+                    self.plot_ylim_original is not None):
+                    self.plot.set_xlim(self.plot_xlim_original)
+                    self.plot.set_ylim(self.plot_ylim_original)
+                    
+                    # Redraw the canvas
+                    self.canvas_plot.draw_idle()
+                    
+                    self.log("Plot zoom reset to original view", "info")
+                    
+        except Exception as e:
+            self.log(f"Error resetting plot zoom: {str(e)}", "error")
     
     def jump_to_frame(self, frame_index):
         """Jump to the specified frame in the image preview
@@ -1515,7 +1660,9 @@ class DeviceReadingsAnalyzer:
             messagebox.showwarning("Warning", "No recognition results available. Please process images first.")
             return
         
-        if self.current_image_index >= len(self.readings):
+        if (self.current_image_index >= len(self.readings) or
+            self.current_image_index >= len(self.reading_strings) or
+            self.current_image_index >= len(self.confidences)):
             messagebox.showwarning("Warning", "Current image has not been processed yet.")
             return
         
@@ -1676,14 +1823,14 @@ class DeviceReadingsAnalyzer:
         Output structure:
             [export_dir]/
             ├── train_images/
-            │   ├── img_00000.png
-            │   ├── img_00001.png
+            │   ├── img_00000.jpg
+            │   ├── img_00001.jpg
             │   └── ...
             └── rec_gt_train.txt
         
         Label file format (tab-separated):
-            train_images/img_00000.png\t-70.00
-            train_images/img_00001.png\t25.30
+            train_images/img_00000.jpg\t-70.00
+            train_images/img_00001.jpg\t25.30
         """
         # Check preconditions
         if not self.image_files:
@@ -1737,7 +1884,7 @@ class DeviceReadingsAnalyzer:
                               self.orig_roi_start_x:self.orig_roi_end_x]
                     
                     # Generate output filename
-                    output_filename = f"img_{exported_count:05d}.png"
+                    output_filename = f"img_{exported_count:05d}.jpg"
                     output_path = os.path.join(images_dir, output_filename)
                     
                     # Save ROI image

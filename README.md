@@ -18,14 +18,14 @@
 
 ## 📖 项目简介
 
-Device Number Reading 是一个专为工业设备数码显示读数设计的图像识别分析系统（v5.0.0）。该系统使用基于 PaddleOCR SVTR_Tiny 深度学习模型的计算机视觉技术，能够自动识别 7 段/8 段数码管显示的数字，并将时间序列数据导出为 Excel 格式，适用于实验监测、设备读数记录等场景。采用模块化架构设计，代码结构清晰，易于维护和扩展。
+Device Number Reading 是一个专为工业设备数码显示读数设计的图像识别分析系统（v5.1.0）。该系统使用 PaddleOCR v3.x 官方 PP-OCRv5 预训练模型的计算机视觉技术，能够自动识别 7 段/8 段数码管显示的数字，并将时间序列数据导出为 Excel 格式，适用于实验监测、设备读数记录等场景。采用模块化架构设计，代码结构清晰，易于维护和扩展。
 
 ### ✨ 核心特性
 
-- 🎯 **高精度识别**：基于 SVTR_Tiny 数码管专用深度学习模型
-- 🚀 **专用优化**：针对数码管场景训练，识别准确率更高
+- 🎯 **高精度识别**：使用 PaddleOCR 官方 PP-OCRv5_server_rec 预训练模型
+- 🚀 **开箱即用**：无需训练，直接使用官方预训练模型
 - 🔧 **灵活配置**：支持多种预处理选项和参数调节
-- 📦 **轻量模型**：模型大小仅 24MB，推理速度更快
+- 📦 **官方模型**：使用 PaddleOCR 官方服务端模型，性能稳定可靠
 - 🔢 **小数点位置调整**：支持识别后调整小数点位置和精度
 - 📊 **智能数据可视化**：实时绘制读数散点图，根据置信度动态标注颜色
 - 🎨 **置信度可视化**：不同置信度用不同颜色表示（绿色=高，橙色=中，红色=低，黑色=失败）
@@ -66,7 +66,7 @@ cd Device_Number_Reading
 
 ```bash
 # 使用 conda
-conda create -n device_reading python=3.9
+conda create -n device_reading python=3.10
 conda activate device_reading
 
 # 或使用 venv
@@ -82,15 +82,13 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt
 
-# 注意：本项目使用预训练的 SVTR_Tiny 数码管专用模型（已包含在项目中）
-# 模型文件位于 ./svtr_tiny_digital/ 目录（约 24MB）
-# 推理模型（推荐，速度更快）：
-#   - inference.pdmodel（模型结构）
+# 注意：本项目使用 PaddleOCR 官方 PP-OCRv5_server_rec 预训练模型
+# 模型文件位于 ./PP-OCRv5_server_rec/ 目录
+# 包含文件：
+#   - inference.json（模型结构）
 #   - inference.pdiparams（模型权重）
-# 训练模型（备用）：
-#   - best_accuracy.pdparams（模型权重）
-# 程序自动优先使用推理模型，如不存在则使用训练模型
-# 无需额外下载，开箱即用
+#   - inference.yml（模型配置）
+# 无需训练，开箱即用
 ```
 
 4. **运行程序**
@@ -254,41 +252,41 @@ train_images/img_00001.png	25.30
 
 ### 核心技术栈
 
-| 技术             | 版本     | 用途           |
-| ---------------- | -------- | -------------- |
-| **Python**       | 3.8+     | 主要开发语言   |
-| **OpenCV**       | 4.5+     | 图像处理       |
-| **PaddleOCR**    | 2.9.1    | OCR 推理引擎   |
-| **PaddlePaddle** | 2.6.2    | 深度学习框架   |
-| **SVTR_Tiny**    | Custom   | 数码管识别模型 |
-| **NumPy**        | 1.24+    | 数值计算       |
-| **Tkinter**      | Built-in | GUI 界面       |
-| **Matplotlib**   | 3.3+     | 数据可视化     |
-| **Pandas**       | 1.3+     | 数据处理       |
+| 技术             | 版本     | 用途         |
+| ---------------- | -------- | ------------ |
+| **Python**       | 3.8+     | 主要开发语言 |
+| **OpenCV**       | 4.5+     | 图像处理     |
+| **PaddlePaddle** | 3.2.2    | 深度学习框架 |
+| **PaddleOCR**    | 3.3.2    | OCR 推理引擎 |
+| **PP-OCRv5**     | Official | 文本识别模型 |
+| **NumPy**        | 1.24+    | 数值计算     |
+| **Tkinter**      | Built-in | GUI 界面     |
+| **Matplotlib**   | 3.3+     | 数据可视化   |
+| **Pandas**       | 1.3+     | 数据处理     |
 
 ### 识别算法
 
-#### SVTR_Tiny 数码管专用识别
+#### PP-OCRv5 官方预训练模型识别
 
 ```
-图像预处理 → 组件间距扩展 → SVTR_Tiny识别 → 结果验证
+图像预处理 → 组件间距扩展 → PP-OCRv5识别 → 白名单过滤 → 结果验证
 ```
 
 **优势**：
 
-- 🎯 **专用训练**：针对数码管场景专门训练的模型
-- 📦 **轻量高效**：模型仅 24MB，推理速度快
-- 🎓 **高准确率**：专用字典（仅 0-9、-、.），减少误识别
-- 🔧 **开箱即用**：模型已包含在项目中，无需下载
-- 🚀 **SVTR 架构**：先进的文本识别架构，识别准确率更高
-- ⚡ **推理优化**：优先使用推理模型（inference.pdmodel + inference.pdiparams），速度更快、部署优化
+- 🎯 **官方模型**：使用 PaddleOCR 官方 PP-OCRv5_server_rec 预训练模型
+- 📦 **免训练部署**：无需自行训练，直接使用官方模型，开箱即用
+- 🎓 **高准确率**：应用层白名单过滤（0-9、-、.、空格），减少误识别
+- 🔧 **维护简单**：跟随 PaddleOCR 官方更新，模型持续优化
+- 🚀 **最新技术**：PP-OCRv5 架构，识别准确率高
+- ⚡ **性能优化**：Inference 格式模型，推理速度快、部署优化
 
 **模型架构**：
 
-- **算法**：SVTR (Scene Text Recognition with a Single Visual Model)
-- **骨干网络**：SVTRNet (6-layer Local + 6-layer Global)
-- **解码器**：CTC (Connectionist Temporal Classification)
-- **空间变换**：STN (Spatial Transformer Network) 透视校正
+- **模型版本**：PP-OCRv5 server recognition model
+- **识别引擎**：PaddleOCR v3.x TextRecognition module
+- **推理格式**：Inference format (optimized for production)
+- **字符处理**：Built-in dictionary + Application-level whitelist filtering
 - **输入尺寸**：3 × 64 × 256 (C × H × W)
 - **自定义字典**：仅包含 0-9、-、. 共 12 个字符
 
@@ -337,10 +335,8 @@ Device_Number_Reading/
 ├── Device_Reading_Analyzer.py    # 主程序入口（模块化架构，v5.0.0）
 ├── requirements.txt               # 依赖包列表
 ├── config.json                    # 配置文件（可选）
-├── digital_dict.txt               # 自定义字典（0-9, -, .）
 ├── README.md                      # 项目文档
 ├── QUICKSTART.md                  # 快速开始指南
-├── PROJECT_STRUCTURE.md           # 项目结构说明
 ├── LICENSE                        # MIT许可证
 │
 ├── src/                           # 源代码模块目录
@@ -360,11 +356,10 @@ Device_Number_Reading/
 │       ├── help_content_cn.txt    # 中文使用指南（~550行）
 │       └── help_content_en.txt    # 英文使用指南（~550行）
 │
-├── svtr_tiny_digital/             # SVTR_Tiny 模型目录
-│   ├── inference.pdmodel          # 推理模型结构（推荐）
-│   ├── inference.pdiparams        # 推理模型权重（推荐，~24MB）
-│   ├── best_accuracy.pdparams     # 训练模型权重（备用，~24MB）
-│   ├── config.yml                 # 模型配置文件
+├── PP-OCRv5_server_rec/           # PP-OCRv5 官方模型目录
+│   ├── inference.json             # 推理模型结构
+│   ├── inference.pdiparams        # 推理模型权重
+│   ├── inference.yml              # 模型配置文件
 │   └── ...
 │
 └── test_images/                   # 测试图像目录
@@ -388,6 +383,34 @@ Device_Number_Reading/
 - **Interactive Chart**：置信度色彩编码的散点图，支持点击跳转到对应图像帧
 - **Manual Correction**：手动校正识别结果（Ctrl+R 或双击图像）
 
+### 键盘快捷键
+
+| 快捷键         | 功能             |
+| -------------- | ---------------- |
+| **Ctrl+L**     | 加载图像序列     |
+| **Ctrl+E**     | 导出到 Excel     |
+| **Ctrl+T**     | 导出训练数据     |
+| **Ctrl+R**     | 手动校正当前读数 |
+| **Ctrl+Z**     | 清除 ROI 选择    |
+| **Ctrl+Enter** | 开始处理图像     |
+| **D**          | 上一张图像       |
+| **F**          | 下一张图像       |
+| **Esc**        | 取消/关闭对话框  |
+
+### 鼠标交互功能
+
+**图像预览区域：**
+
+- **左键拖动**：选择 ROI 区域
+- **双击图像**：打开手动校正对话框（处理完成后）
+
+**散点图区域：**
+
+- **点击数据点**：跳转到对应图像帧
+- **滚轮上下滚动**：缩放图表
+- **双击图表**：重置缩放到原始视图
+- **左键拖动**：平移图表（缩放后）
+
 ---
 
 ## 📊 性能指标
@@ -395,7 +418,7 @@ Device_Number_Reading/
 | 指标             | 数值                 |
 | ---------------- | -------------------- |
 | **识别速度**     | 100-200 ms/图像      |
-| **识别准确率**   | 97%+（SVTR_Tiny）    |
+| **识别准确率**   | 高准确率（PP-OCRv5） |
 | **支持图像格式** | JPG, PNG, BMP, TIFF  |
 | **最大图像序列** | 无限制（取决于内存） |
 | **并发处理**     | 单线程异步处理       |
@@ -445,6 +468,14 @@ Device_Number_Reading/
   - 时间值 (例：14.5 s)
   - 读数值 (例：25.3 °C)
   - 置信度 (例：0.876)
+
+**图表缩放功能**
+
+- **滚轮缩放**：在散点图上滚动鼠标滚轮可放大或缩小图表
+  - 向上滚动：放大（Zoom In）
+  - 向下滚动：缩小（Zoom Out）
+- **双击重置**：双击散点图任意位置可重置缩放到原始视图
+- **拖动平移**：缩放后可用鼠标左键拖动图表查看不同区域
 
 **应用场景**
 
@@ -585,8 +616,7 @@ A:
 A:
 
 - 确认 Python 版本 >= 3.8
-- 确认模型文件存在：检查 `./svtr_tiny_digital/` 目录中是否有 `best_accuracy.pdparams` 文件
-- 确认字典文件存在：检查项目根目录是否有 `digital_dict.txt` 文件
+- 确认模型文件存在：检查 `./PP-OCRv5_server_rec/` 目录中是否有模型文件
 - 重新安装依赖：`pip install -r requirements.txt --upgrade`
 - Windows 用户：确认安装了 Visual C++ Redistributable
 
@@ -594,18 +624,15 @@ A:
 
 A:
 
-- 检查 `./svtr_tiny_digital/` 目录是否完整
+- 检查 `./PP-OCRv5_server_rec/` 目录是否完整
 - 确保包含以下文件：
-  - **推理模型**（推荐，速度更快，部署优化）：
-    - `inference.pdmodel`（模型结构）
-    - `inference.pdiparams`（模型权重，~24MB）
-  - **训练模型**（备用）：
-    - `best_accuracy.pdparams`（模型权重，~24MB）
-  - **配置文件**：
-    - `config.yml`（模型配置）
-- 程序会自动优先使用推理模型（inference.pdmodel + inference.pdiparams），如推理模型不存在则使用训练模型（best_accuracy.pdparams）
-- 如果文件缺失，请从项目仓库重新下载或参考模型训练指南
-- 同时确保项目根目录存在 `digital_dict.txt` 字典文件
+  - **Inference 模型文件**：
+    - `inference.json`（模型结构）
+    - `inference.pdiparams`（模型权重）
+    - `inference.yml`（模型配置）
+- 如果文件缺失，请从 PaddleOCR 官方下载：
+  - 下载地址：https://paddleocr.bj.bcebos.com/PP-OCRv5/chinese/PP-OCRv5_server_rec.tar
+  - 解压后放置在项目根目录，重命名为 `PP-OCRv5_server_rec`
 
 ### 日志分析
 
@@ -644,8 +671,8 @@ A:
 ```
 Copyright (c) 2025 Lucien
 
-Version: 5.0.0
-Last Updated: 2025-12-25
+Version: 5.1.0
+Last Updated: 2025-12-26
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -684,13 +711,13 @@ in the Software without restriction...
 
 ## 📖 Introduction (English)
 
-Device Number Reading is an advanced image recognition and analysis system designed for industrial device digital display readings. Using PaddleOCR SVTR_Tiny custom-trained model and computer vision technology, it automatically recognizes 7-segment/8-segment LED display numbers with high accuracy and exports time-series data to Excel format.
+Device Number Reading is an advanced image recognition and analysis system designed for industrial device digital display readings. Using PaddleOCR v3.x official PP-OCRv5 pretrained model and computer vision technology, it automatically recognizes 7-segment/8-segment LED display numbers with high accuracy and exports time-series data to Excel format.
 
 ### ✨ Key Features
 
-- 🎯 **High Precision**: Custom-trained SVTR_Tiny model for digital displays (97%+ accuracy)
-- 🚀 **Ready to Use**: Pre-trained model included, no download required (24MB)
-- 📦 **Lightweight**: 7x smaller than general models, faster inference
+- 🎯 **High Precision**: Official PP-OCRv5_server_rec pretrained model
+- 🚀 **Ready to Use**: No training required, use official pretrained model directly
+- 📦 **Official Model**: Stable and reliable PaddleOCR official server-level model
 - 🔧 **Flexible Configuration**: Multiple preprocessing options and adjustable parameters
 - 🔢 **Decimal Position Adjustment**: Adjust decimal position and precision after recognition
 - 📊 **Smart Data Visualization**: Real-time scatter plot with confidence-based color coding
@@ -712,15 +739,13 @@ cd Device_Number_Reading
 # Install dependencies
 pip install -r requirements.txt
 
-# Note: The project uses pre-trained SVTR_Tiny digital-specific model (included)
-# Model files are located in ./svtr_tiny_digital/ directory (~24MB)
-# Inference model (recommended, faster):
-#   - inference.pdmodel (model structure)
+# Note: The project uses PaddleOCR official PP-OCRv5_server_rec pretrained model
+# Model files are located in ./PP-OCRv5_server_rec/ directory
+# Includes:
+#   - inference.json (model structure)
 #   - inference.pdiparams (model weights)
-# Training model (backup):
-#   - best_accuracy.pdparams (model weights)
-# The program automatically prioritizes inference model, falls back to training model if not available
-# No additional download required, ready to use
+#   - inference.yml (model configuration)
+# No training required, ready to use
 
 # Run application
 python Device_Reading_Analyzer.py
@@ -740,9 +765,9 @@ python Device_Reading_Analyzer.py
 
 - **Python 3.8+**: Main programming language
 - **OpenCV 4.5+**: Image processing
-- **PaddleOCR 2.9.1**: OCR inference engine
-- **PaddlePaddle 2.6.2**: Deep learning framework
-- **SVTR_Tiny**: Custom-trained digital recognition model
+- **PaddleOCR 3.x**: OCR inference engine (v3.x API)
+- **PaddlePaddle 2.6.2+**: Deep learning framework
+- **PP-OCRv5**: Official pretrained text recognition model
 - **NumPy 1.24+**: Numerical computing
 - **Tkinter**: GUI framework
 - **Matplotlib 3.3+**: Data visualization
@@ -751,7 +776,7 @@ python Device_Reading_Analyzer.py
 ### 📊 Performance Metrics
 
 - **Recognition Speed**: 100-200 ms/image
-- **Accuracy**: 97%+ (SVTR_Tiny custom model)
+- **Accuracy**: High accuracy (PP-OCRv5 official model)
 - **Supported Formats**: JPG, PNG, BMP, TIFF
 - **Max Image Sequence**: Unlimited (memory dependent)
 

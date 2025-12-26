@@ -1,17 +1,16 @@
-
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 """
 Device Readings Analyzer - Main Entry Point
 
 A professional tool for recognizing digital readings from device displays
-using computer vision and PaddleOCR SVTR_Tiny technology.
+using computer vision and PaddleOCR PP-OCRv5 official pretrained model.
 
 Author: Lucien
 Email: lucien-6@qq.com
 License: MIT License
-Version: 5.0.0
-Date: 2025-12-03
+Version: 5.1.0
+Date: 2025-12-26
 """
 
 import sys
@@ -39,7 +38,7 @@ try:
 except ImportError as e:
     print(f"Required package missing: {str(e)}")
     print("Please install PaddleOCR:")
-    print("pip install paddlepaddle==2.6.2 paddleocr==2.9.1")
+    print("pip install paddlepaddle==3.2.2 paddleocr==3.3.2")
     sys.exit(1)
 
 # Import from modular structure
