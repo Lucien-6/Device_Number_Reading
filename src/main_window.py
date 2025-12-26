@@ -1332,32 +1332,85 @@ class DeviceReadingsAnalyzer:
                 readings = self.readings[:data_length]
                 confidences = self.confidences[:data_length]
                 
-                # Assign colors based on confidence values
-                colors = []
-                for conf in confidences:
-                    if np.isnan(conf):
-                        # NaN values -> black
-                        colors.append('black')
-                    elif conf < 0.75:
-                        # Confidence < 0.75 -> red
-                        colors.append('red')
-                    elif conf < 0.9:
-                        # 0.75 <= Confidence < 0.9 -> orange
-                        colors.append('orange')
-                    else:
-                        # Confidence >= 0.9 -> green
-                        colors.append('green')
+                # Separate successful and failed points
+                success_times = []
+                success_readings = []
+                success_colors = []
+                failed_times = []
+                failed_readings = []
+                failed_indices = []
                 
-                # Draw scatter plot with picker enabled
-                self.scatter_plot = self.plot.scatter(
-                    times,
-                    readings,
-                    c=colors,
-                    s=50,
-                    marker='o',
-                    picker=True,
-                    pickradius=5
-                )
+                for i, (t, r, conf) in enumerate(zip(times, readings, confidences)):
+                    if np.isnan(r) or np.isnan(conf):
+                        # Failed recognition - store index for later processing
+                        failed_times.append(t)
+                        failed_indices.append(i)
+                    else:
+                        # Successful recognition
+                        success_times.append(t)
+                        success_readings.append(r)
+                        # Assign color based on confidence
+                        if conf < 0.75:
+                            success_colors.append('red')
+                        elif conf < 0.9:
+                            success_colors.append('orange')
+                        else:
+                            success_colors.append('green')
+                
+                # Calculate interpolated Y values for failed points
+                # Use average of nearest valid neighbors
+                for idx in failed_indices:
+                    # Find previous valid reading
+                    prev_val = None
+                    for j in range(idx - 1, -1, -1):
+                        if not np.isnan(readings[j]):
+                            prev_val = readings[j]
+                            break
+                    
+                    # Find next valid reading
+                    next_val = None
+                    for j in range(idx + 1, data_length):
+                        if not np.isnan(readings[j]):
+                            next_val = readings[j]
+                            break
+                    
+                    # Calculate interpolated value
+                    if prev_val is not None and next_val is not None:
+                        interp_val = (prev_val + next_val) / 2
+                    elif prev_val is not None:
+                        interp_val = prev_val
+                    elif next_val is not None:
+                        interp_val = next_val
+                    else:
+                        interp_val = 0  # No valid neighbors, use 0
+                    
+                    failed_readings.append(interp_val)
+                
+                # Draw successful points (circles)
+                if success_times:
+                    self.scatter_plot = self.plot.scatter(
+                        success_times,
+                        success_readings,
+                        c=success_colors,
+                        s=25,
+                        marker='o',
+                        picker=True,
+                        pickradius=5
+                    )
+                else:
+                    self.scatter_plot = None
+                
+                # Draw failed points (triangles, black color)
+                if failed_times:
+                    self.plot.scatter(
+                        failed_times,
+                        failed_readings,
+                        c='black',
+                        s=25,
+                        marker='^',
+                        picker=True,
+                        pickradius=5
+                    )
                 
                 # Set axis labels and grid
                 unit = self.time_unit.get()

@@ -18,7 +18,7 @@
 
 ## 📖 项目简介
 
-Device Number Reading 是一个专为工业设备数码显示读数设计的图像识别分析系统。该系统使用基于 PaddleOCR SVTR_Tiny 深度学习模型的计算机视觉技术，能够自动识别 7 段/8 段数码管显示的数字，并将时间序列数据导出为 Excel 格式，适用于实验监测、设备读数记录等场景。
+Device Number Reading 是一个专为工业设备数码显示读数设计的图像识别分析系统（v5.0.0）。该系统使用基于 PaddleOCR SVTR_Tiny 深度学习模型的计算机视觉技术，能够自动识别 7 段/8 段数码管显示的数字，并将时间序列数据导出为 Excel 格式，适用于实验监测、设备读数记录等场景。采用模块化架构设计，代码结构清晰，易于维护和扩展。
 
 ### ✨ 核心特性
 
@@ -83,9 +83,13 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 注意：本项目使用预训练的 SVTR_Tiny 数码管专用模型（已包含在项目中）
-# 推理模型文件位于 ./svtr_tiny_digital/ 目录（约 24MB）
-# 包含：inference.pdmodel + inference.pdiparams（推理优化）
-# 以及：best_accuracy.pdparams（训练模型，备用）
+# 模型文件位于 ./svtr_tiny_digital/ 目录（约 24MB）
+# 推理模型（推荐，速度更快）：
+#   - inference.pdmodel（模型结构）
+#   - inference.pdiparams（模型权重）
+# 训练模型（备用）：
+#   - best_accuracy.pdparams（模型权重）
+# 程序自动优先使用推理模型，如不存在则使用训练模型
 # 无需额外下载，开箱即用
 ```
 
@@ -159,7 +163,7 @@ python Device_Reading_Analyzer.py
     - 🟢 绿色：高置信度 (≥ 0.9)
     - 🟠 橙色：中等置信度 (0.75 ~ 0.89)
     - 🔴 红色：低置信度 (< 0.75)
-    - ⚫ 黑色：识别失败 (NaN)
+    - ▲ 黑色三角形：识别失败 (NaN)
 - 可随时点击 **"Stop Processing"** 中止处理
 
 #### 5️⃣ 查看和交互
@@ -171,7 +175,7 @@ python Device_Reading_Analyzer.py
   - 🟢 **绿色**：高置信度 (≥ 0.9) - 识别结果高度可信
   - 🟠 **橙色**：中等置信度 ([0.75, 0.9)) - 识别结果基本可信，建议人工复核
   - 🔴 **红色**：低置信度 (< 0.75) - 识别结果可信度低，需要人工复核
-  - ⚫ **黑色**：识别失败 (NaN) - 未能识别，需要检查原图
+  - ▲ **黑色三角形**：识别失败 (NaN) - 未能识别，需要检查原图
 - **交互式跳转**：
   - 点击散点图上的任意数据点
   - 图像预览区域会自动跳转到对应的图像帧
@@ -183,15 +187,18 @@ python Device_Reading_Analyzer.py
 当批量处理完成后，如果发现个别识别结果有误，可进行手动校正：
 
 **触发方式**：
+
 - **快捷键**：导航到需要校正的图像后，按 `Ctrl+R`
 - **双击**：直接双击预览窗口中的图像
 
 **校正流程**：
+
 1. 在弹出的对话框中输入正确的数值
 2. 点击 `Confirm` 或按 `Enter` 确认
 3. 点击 `Cancel` 或按 `Esc` 取消
 
 **校正效果**：
+
 - 散点图自动更新对应数据点
 - 预览窗口显示更新后的标注
 - 置信度自动设为 1.0（100%）
@@ -208,14 +215,17 @@ python Device_Reading_Analyzer.py
 将识别结果导出为 PaddleOCR 训练数据格式，便于后续模型微调：
 
 **触发方式**：
+
 - 点击 **File → Export to Train Data**
 - 或按 **Ctrl+T** 快捷键
 
 **导出内容**：
+
 - **图像文件**：ROI 区域裁剪后的原始图像（不含预处理）
 - **标签文件**：`rec_gt_train.txt`（Tab 分隔格式）
 
 **导出目录结构**：
+
 ```
 导出目录/
 ├── train_images/           # 图像目录
@@ -226,12 +236,14 @@ python Device_Reading_Analyzer.py
 ```
 
 **标签文件格式**：
+
 ```
 train_images/img_00000.png	-70.00
 train_images/img_00001.png	25.30
 ```
 
 **注意事项**：
+
 - 仅在批量处理完成后可用
 - 无效识别结果会被自动跳过
 - 手动校正后的结果会被正确导出
@@ -246,10 +258,10 @@ train_images/img_00001.png	25.30
 | ---------------- | -------- | -------------- |
 | **Python**       | 3.8+     | 主要开发语言   |
 | **OpenCV**       | 4.5+     | 图像处理       |
-| **PaddleOCR**    | 2.7+     | OCR 推理引擎   |
-| **PaddlePaddle** | 2.5+     | 深度学习框架   |
+| **PaddleOCR**    | 2.9.1    | OCR 推理引擎   |
+| **PaddlePaddle** | 2.6.2    | 深度学习框架   |
 | **SVTR_Tiny**    | Custom   | 数码管识别模型 |
-| **NumPy**        | 1.20+    | 数值计算       |
+| **NumPy**        | 1.24+    | 数值计算       |
 | **Tkinter**      | Built-in | GUI 界面       |
 | **Matplotlib**   | 3.3+     | 数据可视化     |
 | **Pandas**       | 1.3+     | 数据处理       |
@@ -269,6 +281,7 @@ train_images/img_00001.png	25.30
 - 🎓 **高准确率**：专用字典（仅 0-9、-、.），减少误识别
 - 🔧 **开箱即用**：模型已包含在项目中，无需下载
 - 🚀 **SVTR 架构**：先进的文本识别架构，识别准确率更高
+- ⚡ **推理优化**：优先使用推理模型（inference.pdmodel + inference.pdiparams），速度更快、部署优化
 
 **模型架构**：
 
@@ -285,6 +298,7 @@ train_images/img_00001.png	25.30
 - 置信度过滤机制
 - 自动图像预处理优化
 - 支持 GPU 加速推理
+- 推理模型优先：自动检测并使用推理模型（inference.pdmodel + inference.pdiparams），如不存在则使用训练模型（best_accuracy.pdparams）
 
 ### 图像预处理流程
 
@@ -320,27 +334,38 @@ PaddleOCR识别
 
 ```
 Device_Number_Reading/
-├── Device_Reading_Analyzer.py    # 主程序入口
+├── Device_Reading_Analyzer.py    # 主程序入口（模块化架构，v5.0.0）
 ├── requirements.txt               # 依赖包列表
 ├── config.json                    # 配置文件（可选）
+├── digital_dict.txt               # 自定义字典（0-9, -, .）
 ├── README.md                      # 项目文档
 ├── QUICKSTART.md                  # 快速开始指南
 ├── PROJECT_STRUCTURE.md           # 项目结构说明
-├── CHANGELOG.md                   # 更新日志
 ├── LICENSE                        # MIT许可证
 │
-├── src/                           # 源代码模块
-│   ├── main_window.py             # 主窗口（完整实现）
+├── src/                           # 源代码模块目录
+│   ├── __init__.py                # 包初始化
+│   ├── main_window.py             # 主窗口模块（完整实现，~1700行）
 │   │
 │   ├── core/                      # 核心功能模块
-│   │   ├── image_processor.py     # 图像处理
-│   │   └── digit_recognizer.py    # 数字识别（PaddleOCR）
+│   │   ├── __init__.py
+│   │   ├── image_processor.py     # 图像处理（完整实现，~570行）
+│   │   └── digit_recognizer.py    # 数字识别（完整实现，~535行）
 │   │
 │   ├── utils/                     # 工具模块（预留）
+│   │   └── __init__.py
 │   │
 │   └── resources/                 # 资源文件
-│       ├── help_content_cn.txt    # 中文使用指南
-│       └── help_content_en.txt    # 英文使用指南
+│       ├── __init__.py
+│       ├── help_content_cn.txt    # 中文使用指南（~550行）
+│       └── help_content_en.txt    # 英文使用指南（~550行）
+│
+├── svtr_tiny_digital/             # SVTR_Tiny 模型目录
+│   ├── inference.pdmodel          # 推理模型结构（推荐）
+│   ├── inference.pdiparams        # 推理模型权重（推荐，~24MB）
+│   ├── best_accuracy.pdparams     # 训练模型权重（备用，~24MB）
+│   ├── config.yml                 # 模型配置文件
+│   └── ...
 │
 └── test_images/                   # 测试图像目录
 ```
@@ -386,28 +411,33 @@ Device_Number_Reading/
 程序自动为每个识别结果分配置信度评分，并通过颜色直观展示：
 
 - **🟢 绿色点** (置信度 ≥ 0.9)
+
   - 表示高置信度识别
   - 这些结果高度可信，通常无需人工复核
   - 适合直接用于数据分析
 
 - **🟠 橙色点** (置信度 0.75 ~ 0.89)
+
   - 表示中等置信度识别
   - 识别结果基本可信，但建议抽查验证
   - 如有异常值，需检查对应图像
 
 - **🔴 红色点** (置信度 < 0.75)
+
   - 表示低置信度识别
   - 识别结果可信度较低，强烈建议人工复核
   - 可能是图像质量问题或数字模糊
 
-- **⚫ 黑色点** (NaN - 识别失败)
+- **▲ 黑色三角形** (NaN - 识别失败)
   - 表示完全无法识别
+  - 使用三角形标记以区别于其他数据点
   - 需要检查原始图像
-  - 可能需要调整预处理参数或ROI区域
+  - 可能需要调整预处理参数或 ROI 区域
 
 **交互式图像跳转**
 
 点击散点图上的任意数据点即可：
+
 - 图像预览区域自动显示对应帧
 - 图像滑块同步更新到对应位置
 - 日志窗口记录跳转信息，包括：
@@ -418,7 +448,7 @@ Device_Number_Reading/
 
 **应用场景**
 
-1. **快速质检**：点击异常值（红色/黑色点）快速定位问题图像
+1. **快速质检**：点击异常值（红色点/黑色三角形）快速定位问题图像
 2. **数据验证**：点击橙色点进行抽样复核
 3. **趋势分析**：观察颜色分布了解整体识别质量
 4. **问题诊断**：集中的低置信度点可能表明该时段图像质量问题
@@ -427,7 +457,7 @@ Device_Number_Reading/
 
 - 图像处理过程中点击跳转功能被禁用，防止线程冲突
 - 处理完成后即可使用交互功能
-- 导出的Excel文件包含完整的置信度列，便于后续分析
+- 导出的 Excel 文件包含完整的置信度列，便于后续分析
 
 ### 手动校正功能
 
@@ -435,10 +465,10 @@ Device_Number_Reading/
 
 **触发方式**
 
-| 方式 | 操作 |
-|------|------|
+| 方式   | 操作                        |
+| ------ | --------------------------- |
 | 快捷键 | 导航到目标图像后按 `Ctrl+R` |
-| 双击 | 双击预览窗口中的图像 |
+| 双击   | 双击预览窗口中的图像        |
 
 **校正流程**
 
@@ -565,16 +595,17 @@ A:
 A:
 
 - 检查 `./svtr_tiny_digital/` 目录是否完整
-- 确保包含以下文件（推理模型优先）：
-  - **推理模型**（推荐，速度更快）：
+- 确保包含以下文件：
+  - **推理模型**（推荐，速度更快，部署优化）：
     - `inference.pdmodel`（模型结构）
     - `inference.pdiparams`（模型权重，~24MB）
   - **训练模型**（备用）：
     - `best_accuracy.pdparams`（模型权重，~24MB）
   - **配置文件**：
     - `config.yml`（模型配置）
-- 程序会自动优先使用推理模型，如推理模型不存在则使用训练模型
+- 程序会自动优先使用推理模型（inference.pdmodel + inference.pdiparams），如推理模型不存在则使用训练模型（best_accuracy.pdparams）
 - 如果文件缺失，请从项目仓库重新下载或参考模型训练指南
+- 同时确保项目根目录存在 `digital_dict.txt` 字典文件
 
 ### 日志分析
 
@@ -612,6 +643,9 @@ A:
 
 ```
 Copyright (c) 2025 Lucien
+
+Version: 5.0.0
+Last Updated: 2025-12-25
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -658,9 +692,12 @@ Device Number Reading is an advanced image recognition and analysis system desig
 - 🚀 **Ready to Use**: Pre-trained model included, no download required (24MB)
 - 📦 **Lightweight**: 7x smaller than general models, faster inference
 - 🔧 **Flexible Configuration**: Multiple preprocessing options and adjustable parameters
+- 🔢 **Decimal Position Adjustment**: Adjust decimal position and precision after recognition
+- 📊 **Smart Data Visualization**: Real-time scatter plot with confidence-based color coding
+- 🎨 **Confidence Visualization**: Color-coded results (green=high, orange=medium, red=low, black=failed)
+- 🖱️ **Interactive Chart**: Click data points to jump to corresponding image frames
 - ✏️ **Manual Correction**: Edit recognition results manually (Ctrl+R or double-click)
-- 📊 **Data Visualization**: Real-time reading curve plotting
-- 💾 **Data Export**: One-click Excel export
+- 💾 **Data Export**: One-click Excel export with confidence information
 - 🎓 **Training Data Export**: Export results as PaddleOCR training data format (Ctrl+T)
 - 🖼️ **ROI Selection**: Visual region of interest selection
 - 🚀 **Batch Processing**: Support for image sequence batch recognition
@@ -674,6 +711,16 @@ cd Device_Number_Reading
 
 # Install dependencies
 pip install -r requirements.txt
+
+# Note: The project uses pre-trained SVTR_Tiny digital-specific model (included)
+# Model files are located in ./svtr_tiny_digital/ directory (~24MB)
+# Inference model (recommended, faster):
+#   - inference.pdmodel (model structure)
+#   - inference.pdiparams (model weights)
+# Training model (backup):
+#   - best_accuracy.pdparams (model weights)
+# The program automatically prioritizes inference model, falls back to training model if not available
+# No additional download required, ready to use
 
 # Run application
 python Device_Reading_Analyzer.py
@@ -693,13 +740,13 @@ python Device_Reading_Analyzer.py
 
 - **Python 3.8+**: Main programming language
 - **OpenCV 4.5+**: Image processing
-- **PaddleOCR 2.7+**: OCR inference engine
-- **PaddlePaddle 2.5+**: Deep learning framework
+- **PaddleOCR 2.9.1**: OCR inference engine
+- **PaddlePaddle 2.6.2**: Deep learning framework
 - **SVTR_Tiny**: Custom-trained digital recognition model
-- **NumPy**: Numerical computing
+- **NumPy 1.24+**: Numerical computing
 - **Tkinter**: GUI framework
-- **Matplotlib**: Data visualization
-- **Pandas**: Data processing
+- **Matplotlib 3.3+**: Data visualization
+- **Pandas 1.3+**: Data processing
 
 ### 📊 Performance Metrics
 

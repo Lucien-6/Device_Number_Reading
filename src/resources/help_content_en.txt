@@ -136,7 +136,7 @@ Step 4: Process Images
      - 🟢 Green: High confidence (≥ 0.9)
      - 🟠 Orange: Medium confidence (0.75 ~ 0.89)
      - 🔴 Red: Low confidence (< 0.75)
-     - ⚫ Black: Recognition failed (NaN)
+     - ▲ Black: Recognition failed (NaN)
    • Image slider automatically moves to current position
    • Click "Stop Processing" button to abort at any time
    • Note: Interactive jumping disabled during processing
@@ -173,7 +173,7 @@ colors representing recognition confidence:
   - Low confidence recognition, lower reliability
   - Strongly recommend manual verification of corresponding images
   
-• ⚫ Black points (NaN - Recognition failed)
+• ▲ Black points (NaN - Recognition failed)
   - Complete recognition failure
   - Need to check original images or adjust parameters
 
@@ -586,7 +586,7 @@ This program uses computer vision and PaddleOCR technology to recognize
 
 Program Name: Device Readings Analyzer
 Version: 5.0.0
-Development Date: 2025-12-03
+Development Date: 2025-12-25
 
 Author: Lucien
 Email: lucien-6@qq.com
