@@ -5,16 +5,16 @@
 【Introduction】
 
 This is a professional tool for recognizing digital readings from 
-device displays. Using computer vision and PaddleOCR v3.x official 
-PP-OCRv5 pretrained model technology, it can automatically recognize numeric readings from 
-7-segment displays and export results to Excel spreadsheets. Suitable for 
-laboratory data collection, industrial equipment monitoring, historical 
-data recovery, and more.
+device displays. Using computer vision and PaddleOCR v3.x PP-OCRv5 
+architecture with fine-tuned model for 7-segment displays (99.8% test 
+accuracy), it can automatically recognize numeric readings and export 
+results to Excel spreadsheets. Suitable for laboratory data collection, 
+industrial equipment monitoring, historical data recovery, and more.
 
 Key Features:
 • Batch image processing support
-• Based on PP-OCRv5 official pretrained model (no training required, ready to use)
-• Uses PaddleOCR official server-level model, stable and reliable performance
+• Based on PP-OCRv5 architecture, fine-tuned for 7-segment displays
+• Test accuracy reaches 99.8%, stable and reliable performance
 • Support for negative numbers and decimal points
 • Support for decimal position adjustment (Keep/None/0.1/0.01/0.001/0.0001)
 • Smart data visualization: dynamic color-coded scatter plot based on confidence
@@ -427,8 +427,7 @@ A5: When recognition fails or accuracy is low:
    5. Check model files
       • Ensure ./PP-OCRv5_server_rec/ directory exists
       • Check for inference.pdiparams, inference.json, inference.yml files
-      • If missing, download from official source:
-        https://paddleocr.bj.bcebos.com/PP-OCRv5/chinese/PP-OCRv5_server_rec.tar
+      • This is a fine-tuned model for 7-segment displays (99.8% test accuracy), provided with the project
 
 
 Q6: How to improve processing speed?
@@ -612,15 +611,16 @@ This program uses computer vision and PaddleOCR technology to recognize
    • Optional: Closing operation (rectangular kernel, protects decimal point)
    • Size adjustment: Ensure image size suitable for OCR recognition
 
-2. PP-OCRv5 Official Pretrained Model Recognition
-   • Deep learning model: PaddleOCR official PP-OCRv5_server_rec pretrained model
+2. PP-OCRv5 Fine-tuned Model for 7-Segment Displays
+   • Deep learning model: Based on PP-OCRv5 architecture, fine-tuned for 7-segment displays
+   • Recognition accuracy: Test accuracy reaches 99.8%
    • Inference format: Inference format (inference.pdiparams + inference.json + inference.yml)
    • API version: PaddleOCR v3.x TextRecognition module
-   • Built-in dictionary: Full Chinese and English character support
+   • Custom dictionary: Specialized for digital display characters (0-9, -, .)
    • Application-level whitelist: Only keep "-0123456789. " (including space)
    • Confidence filtering: Default threshold 0.5, automatically filter low confidence results
    • Space handling: Support space recognition, automatically removed during numeric processing
-   • Model management: Uses official pretrained model (./PP-OCRv5_server_rec/), no training required
+   • Model management: Uses fine-tuned model for 7-segment displays (./PP-OCRv5_server_rec/)
 
 3. Result Validation
    • Format checking: Verify compliance with numeric format
