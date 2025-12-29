@@ -128,7 +128,7 @@ python Device_Reading_Analyzer.py
 **时间参数**
 
 - **Time Interval**：图像之间的时间间隔
-- **Time Unit**：时间单位（milliseconds, seconds, minutes, hours）
+- **Time Unit**：时间单位（ms, s, mins, hours）
 - **Start Time**：起始时间值
 
 **识别参数**
@@ -228,8 +228,8 @@ python Device_Reading_Analyzer.py
 ```
 导出目录/
 ├── train_images/           # 图像目录
-│   ├── img_00000.png
-│   ├── img_00001.png
+│   ├── img_00000.jpg
+│   ├── img_00001.jpg
 │   └── ...
 └── rec_gt_train.txt        # 标签文件
 ```
@@ -237,8 +237,8 @@ python Device_Reading_Analyzer.py
 **标签文件格式**：
 
 ```
-train_images/img_00000.png	-70.00
-train_images/img_00001.png	25.30
+train_images/img_00000.jpg	-70.00
+train_images/img_00001.jpg	25.30
 ```
 
 **注意事项**：
@@ -335,11 +335,9 @@ PaddleOCR识别
 
 ```
 Device_Number_Reading/
-├── Device_Reading_Analyzer.py    # 主程序入口（模块化架构，v5.0.0）
+├── Device_Reading_Analyzer.py    # 主程序入口
 ├── requirements.txt               # 依赖包列表
-├── config.json                    # 配置文件（可选）
 ├── README.md                      # 项目文档
-├── QUICKSTART.md                  # 快速开始指南
 ├── LICENSE                        # MIT许可证
 │
 ├── src/                           # 源代码模块目录
@@ -420,7 +418,7 @@ Device_Number_Reading/
 
 | 指标             | 数值                  |
 | ---------------- | --------------------- |
-| **识别速度**     | 100-200 ms/图像       |
+| **识别速度**     | 1-2s/图像             |
 | **识别准确率**   | 99.8%（数码管测试集） |
 | **支持图像格式** | JPG, PNG, BMP, TIFF   |
 | **最大图像序列** | 无限制（取决于内存）  |
